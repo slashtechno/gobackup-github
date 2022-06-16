@@ -1,5 +1,5 @@
 # gobackup-github  
-Go program that utilizes the Github API to backup all repositories for a user  
+Go program that utilizes the Github API to backup all repositories for a user. In addition, can backup starred repositories  
 
 ### Setup  
 1. Create a Github personal access token with the following scopes:  `read:user, repo`  
