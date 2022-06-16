@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"math"
@@ -26,21 +27,20 @@ type repoStruct struct {
 
 func main() {
 	godotenv.Load()
-	fmt.Println(`What should be backed up?
-1) Your public and private repositories
-2) Your starred repositories
-3) Both`)
-	reader := bufio.NewReader(os.Stdin)
-	backupChoice, _ := reader.ReadString('\n')
-	backupChoice = strings.TrimSpace(backupChoice)
-	switch backupChoice {
-	case "1":
-		cloneRepos()
-	case "2":
-		cloneStars()
-	case "3":
+	backupRepos := flag.Bool("backup-repos", false, "Set this flag to backup your repositories without using the terminal interface of this program")
+	backupStars := flag.Bool("backup-stars", false, "Set this flag to backup your starred repositories without using the terminal interface of this program")
+	flag.Parse()
+	if *backupRepos && *backupStars {
 		cloneRepos()
 		cloneStars()
+	} else if *backupRepos {
+		cloneRepos()
+	} else if *backupStars {
+		cloneStars()
+	} else {
+		fmt.Println(*backupRepos) // For debugging
+		fmt.Println(*backupStars) // For debugging
+		mainMenu()
 	}
 }
 
@@ -176,4 +176,39 @@ func ghRequest(url string) *http.Response {
 
 func loadToken() string {
 	return os.Getenv("GITHUB_TOKEN")
+}
+
+// Menus
+
+func mainMenu() {
+	fmt.Println(`1) Backup repositories
+2) Exit`)
+	reader := bufio.NewReader(os.Stdin)
+	menuSelection, _ := reader.ReadString('\n')
+	menuSelection = strings.TrimSpace(menuSelection)
+	switch menuSelection {
+	case "1":
+		backupMenu()
+	case "2":
+		os.Exit(0)
+	}
+}
+
+func backupMenu() {
+	fmt.Println(`What should this program backup??
+1) Your public and private repositories
+2) Your starred repositories
+3) Both`)
+	reader := bufio.NewReader(os.Stdin)
+	backupSelection, _ := reader.ReadString('\n')
+	backupSelection = strings.TrimSpace(backupSelection)
+	switch backupSelection {
+	case "1":
+		cloneRepos()
+	case "2":
+		cloneStars()
+	case "3":
+		cloneRepos()
+		cloneStars()
+	}
 }
