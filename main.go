@@ -27,8 +27,8 @@ type repoStruct struct {
 
 func main() {
 	godotenv.Load()
-	backupRepos := flag.Bool("backup-repos", false, "Set this flag to backup your repositories without using the terminal interface of this program")
-	backupStars := flag.Bool("backup-stars", false, "Set this flag to backup your starred repositories without using the terminal interface of this program")
+	backupRepos := flag.Bool("backup-repos", false, "Set this flag to backup your repositories and skip the interactive UI (can be combined with backup-stars)")
+	backupStars := flag.Bool("backup-stars", false, "Set this flag to backup your starred repositoriesand skip the interactive UI (can be combined with backup-repos)")
 	flag.Parse()
 	if *backupRepos && *backupStars {
 		cloneRepos()
@@ -38,8 +38,6 @@ func main() {
 	} else if *backupStars {
 		cloneStars()
 	} else {
-		fmt.Println(*backupRepos) // For debugging
-		fmt.Println(*backupStars) // For debugging
 		mainMenu()
 	}
 }
@@ -59,7 +57,7 @@ func cloneRepos() {
 			fmt.Printf("Error:\n%v\n", err)
 		}
 		for i := 0; i < len(repoSlice); i++ {
-			cloneDirectory := filepath.Dir(currentDirectory + "/github-backup/your-repos-" + dateToday + "/" + repoSlice[i].Name + "/")
+			cloneDirectory := filepath.Dir(currentDirectory + "/github-backup-" + dateToday + "/your-repos/" + repoSlice[i].Name + "/")
 			fmt.Printf("Cloning %v (iteration %v) to %v\n", repoSlice[i].Name, i+1, cloneDirectory)
 			_, err = git.PlainClone(cloneDirectory, false, &git.CloneOptions{
 				URL: repoSlice[i].HTMLURL,
@@ -90,7 +88,7 @@ func cloneStars() {
 			fmt.Printf("Error:\n%v\n", err)
 		}
 		for i := 0; i < len(starSlice); i++ {
-			cloneDirectory := filepath.Dir(currentDirectory + "/github-backup/your-stars-" + dateToday + "/" + starSlice[i].Name + "/")
+			cloneDirectory := filepath.Dir(currentDirectory + "/github-backup-" + dateToday + "/your-stars/" + starSlice[i].Name + "/")
 			fmt.Printf("Cloning %v (iteration %v) to %v\n", starSlice[i].Name, i, cloneDirectory)
 			_, err = git.PlainClone(cloneDirectory, false, &git.CloneOptions{
 				URL: starSlice[i].HTMLURL,
@@ -195,7 +193,7 @@ func mainMenu() {
 }
 
 func backupMenu() {
-	fmt.Println(`What should this program backup??
+	fmt.Println(`What should this program backup?
 1) Your public and private repositories
 2) Your starred repositories
 3) Both`)
