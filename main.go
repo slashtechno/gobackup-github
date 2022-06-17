@@ -23,6 +23,9 @@ import (
 type repoStruct struct {
 	HTMLURL string `json:"html_url"`
 	Name    string `json:"name"`
+	Owner   struct {
+		Login string `json:"login"`
+	} `json:"owner"`
 }
 
 func main() {
@@ -57,7 +60,8 @@ func cloneRepos() {
 			fmt.Printf("Error:\n%v\n", err)
 		}
 		for i := 0; i < len(repoSlice); i++ {
-			cloneDirectory := filepath.Dir(currentDirectory + "/github-backup-" + dateToday + "/your-repos/" + repoSlice[i].Name + "/")
+			owner := repoSlice[i].Owner.Login
+			cloneDirectory := filepath.Dir(currentDirectory + "/github-backup-" + dateToday + "/your-repos/" + owner + "_" + repoSlice[i].Name + "/")
 			fmt.Printf("Cloning %v (iteration %v) to %v\n", repoSlice[i].Name, i+1, cloneDirectory)
 			_, err = git.PlainClone(cloneDirectory, false, &git.CloneOptions{
 				URL: repoSlice[i].HTMLURL,
@@ -88,7 +92,8 @@ func cloneStars() {
 			fmt.Printf("Error:\n%v\n", err)
 		}
 		for i := 0; i < len(starSlice); i++ {
-			cloneDirectory := filepath.Dir(currentDirectory + "/github-backup-" + dateToday + "/your-stars/" + starSlice[i].Name + "/")
+			owner := starSlice[i].Owner.Login
+			cloneDirectory := filepath.Dir(currentDirectory + "/github-backup-" + dateToday + "/your-stars/" + owner + "_" + starSlice[i].Name + "/")
 			fmt.Printf("Cloning %v (iteration %v) to %v\n", starSlice[i].Name, i, cloneDirectory)
 			_, err = git.PlainClone(cloneDirectory, false, &git.CloneOptions{
 				URL: starSlice[i].HTMLURL,
