@@ -34,18 +34,18 @@ func main() {
 	backupStars := flag.Bool("backup-stars", false, "Set this flag to backup your starred repositoriesand skip the interactive UI (can be combined with backup-repos)")
 	flag.Parse()
 	if *backupRepos && *backupStars {
-		cloneRepos()
-		cloneStars()
+		cloneRepos(true)
+		cloneStars(true)
 	} else if *backupRepos {
-		cloneRepos()
+		cloneRepos(true)
 	} else if *backupStars {
-		cloneStars()
+		cloneStars(true)
 	} else {
 		mainMenu()
 	}
 }
 
-func cloneRepos() map[string]any {
+func cloneRepos(clone bool) map[string]any {
 	currentDirectory, _ := os.Getwd()
 	dateToday := time.Now().Format("01-02-2006")
 	user := gjson.Get(responseContent(ghRequest("https://api.github.com/user").Body), "login")
@@ -62,17 +62,19 @@ func cloneRepos() map[string]any {
 		}
 		for i := 0; i < len(repoSlice); i++ {
 			owner := repoSlice[i].Owner.Login
-			cloneDirectory := filepath.Dir(currentDirectory + "/github-backup-" + dateToday + "/your-repos/" + owner + "_" + repoSlice[i].Name + "/")
-			fmt.Printf("Cloning %v (iteration %v) to %v\n", repoSlice[i].Name, i+1, cloneDirectory)
-			_, err = git.PlainClone(cloneDirectory, false, &git.CloneOptions{
-				URL: repoSlice[i].HTMLURL,
-				Auth: &githttp.BasicAuth{
-					Username: user.String(), // anything except an empty string
-					Password: loadToken(),
-				},
-			})
-			if err != nil {
-				fmt.Println(err)
+			if clone {
+				cloneDirectory := filepath.Dir(currentDirectory + "/github-backup-" + dateToday + "/your-repos/" + owner + "_" + repoSlice[i].Name + "/")
+				fmt.Printf("Cloning %v (iteration %v) to %v\n", repoSlice[i].Name, i+1, cloneDirectory)
+				_, err = git.PlainClone(cloneDirectory, false, &git.CloneOptions{
+					URL: repoSlice[i].HTMLURL,
+					Auth: &githttp.BasicAuth{
+						Username: user.String(), // anything except an empty string
+						Password: loadToken(),
+					},
+				})
+				if err != nil {
+					fmt.Println(err)
+				}
 			}
 			repos[repoSlice[i].Name] = repoSlice[i].HTMLURL
 		}
@@ -80,7 +82,7 @@ func cloneRepos() map[string]any {
 	return repos
 }
 
-func cloneStars() map[string]any {
+func cloneStars(clone bool) map[string]any {
 	currentDirectory, _ := os.Getwd()
 	dateToday := time.Now().Format("01-02-2006")
 	user := gjson.Get(responseContent(ghRequest("https://api.github.com/user").Body), "login")
@@ -97,17 +99,19 @@ func cloneStars() map[string]any {
 		}
 		for i := 0; i < len(starSlice); i++ {
 			owner := starSlice[i].Owner.Login
-			cloneDirectory := filepath.Dir(currentDirectory + "/github-backup-" + dateToday + "/your-stars/" + owner + "_" + starSlice[i].Name + "/")
-			fmt.Printf("Cloning %v (iteration %v) to %v\n", starSlice[i].Name, i, cloneDirectory)
-			_, err = git.PlainClone(cloneDirectory, false, &git.CloneOptions{
-				URL: starSlice[i].HTMLURL,
-				Auth: &githttp.BasicAuth{
-					Username: user.String(), // anything except an empty string
-					Password: loadToken(),
-				},
-			})
-			if err != nil {
-				fmt.Println(err)
+			if clone {
+				cloneDirectory := filepath.Dir(currentDirectory + "/github-backup-" + dateToday + "/your-stars/" + owner + "_" + starSlice[i].Name + "/")
+				fmt.Printf("Cloning %v (iteration %v) to %v\n", starSlice[i].Name, i, cloneDirectory)
+				_, err = git.PlainClone(cloneDirectory, false, &git.CloneOptions{
+					URL: starSlice[i].HTMLURL,
+					Auth: &githttp.BasicAuth{
+						Username: user.String(), // anything except an empty string
+						Password: loadToken(),
+					},
+				})
+				if err != nil {
+					fmt.Println(err)
+				}
 			}
 			stars[starSlice[i].Name] = starSlice[i].HTMLURL
 		}
@@ -232,11 +236,11 @@ func backupMenu() {
 	backupSelection = strings.TrimSpace(backupSelection)
 	switch backupSelection {
 	case "1":
-		cloneRepos()
+		cloneRepos(true)
 	case "2":
-		cloneStars()
+		cloneStars(true)
 	case "3":
-		cloneRepos()
-		cloneStars()
+		cloneRepos(true)
+		cloneStars(true)
 	}
 }
