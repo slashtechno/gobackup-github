@@ -45,12 +45,13 @@ func main() {
 	}
 }
 
-func cloneRepos() {
+func cloneRepos() map[string]any {
 	currentDirectory, _ := os.Getwd()
 	dateToday := time.Now().Format("01-02-2006")
 	user := gjson.Get(responseContent(ghRequest("https://api.github.com/user").Body), "login")
 	fmt.Println("User: " + user.String())
 	var repoSlice []repoStruct
+	repos := map[string]any{}
 	neededPages := calculateNeededPages("userRepos")
 	fmt.Println("Getting list of repositories")
 	for i := 1; i <= neededPages; i++ {
@@ -73,16 +74,19 @@ func cloneRepos() {
 			if err != nil {
 				fmt.Println(err)
 			}
+			repos[repoSlice[i].Name] = repoSlice[i].HTMLURL
 		}
 	}
+	return repos
 }
 
-func cloneStars() {
+func cloneStars() map[string]any {
 	currentDirectory, _ := os.Getwd()
 	dateToday := time.Now().Format("01-02-2006")
 	user := gjson.Get(responseContent(ghRequest("https://api.github.com/user").Body), "login")
 	fmt.Println("User: " + user.String())
 	var starSlice []repoStruct
+	stars := map[string]any{}
 	neededPages := calculateNeededPages("userStars")
 	fmt.Println("Getting list of starred repositories")
 	for i := 1; i <= neededPages; i++ {
@@ -105,8 +109,10 @@ func cloneStars() {
 			if err != nil {
 				fmt.Println(err)
 			}
+			stars[starSlice[i].Name] = starSlice[i].HTMLURL
 		}
 	}
+	return stars
 }
 
 func calculateNeededPages(whichRepos string) int {
@@ -179,6 +185,25 @@ func ghRequest(url string) *http.Response {
 
 func loadToken() string {
 	return os.Getenv("GITHUB_TOKEN")
+}
+
+func mergeRepoJson(repos map[string]any, stars map[string]any) {
+	currentDirectory, _ := os.Getwd()
+	dateToday := time.Now().Format("01-02-2006")
+	backupDirectory := filepath.Dir(currentDirectory + "/github-backup-" + dateToday + "/")
+	mergedMap := map[string]map[string]any{}
+	mergedMap["repos"] = repos
+	mergedMap["stars"] = stars
+	mergedJson, err := json.Marshal(mergedMap)
+	if err != nil {
+		fmt.Printf("Error:\n%v\n", err)
+	}
+	fmt.Println(mergedJson)
+
+	// Check if there is a backup folder for the current day
+	_, err = os.Stat(backupDirectory)
+	fmt.Printf("Error Type:\n%T\nError:\n%v\n", err, err)
+
 }
 
 // Menus
