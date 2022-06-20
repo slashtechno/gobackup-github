@@ -28,26 +28,29 @@ type repoStruct struct {
 	} `json:"owner"`
 }
 
+var currentDirectory, _ = os.Getwd()
+var dateToday = time.Now().Format("01-02-2006")
+var allRepos = map[string]any{}
+
 func main() {
 	godotenv.Load()
-	backupRepos := flag.Bool("backup-repos", false, "Set this flag to backup your repositories and skip the interactive UI (can be combined with backup-stars)")
-	backupStars := flag.Bool("backup-stars", false, "Set this flag to backup your starred repositoriesand skip the interactive UI (can be combined with backup-repos)")
+	repoFlag := flag.Bool("backup-repos", false, "Set this flag to backup your repositories and skip the interactive UI (can be combined with backup-stars)")
+	starFlag := flag.Bool("backup-stars", false, "Set this flag to backup your starred repositoriesand skip the interactive UI (can be combined with backup-repos)")
 	flag.Parse()
-	if *backupRepos && *backupStars {
-		cloneRepos(true)
-		cloneStars(true)
-	} else if *backupRepos {
-		cloneRepos(true)
-	} else if *backupStars {
-		cloneStars(true)
+	if *repoFlag && *starFlag {
+		backupRepos(true)
+		backupStars(true)
+	} else if *repoFlag {
+		backupRepos(true)
+	} else if *starFlag {
+		backupStars(true)
 	} else {
 		mainMenu()
 	}
 }
 
-func cloneRepos(clone bool) map[string]any {
-	currentDirectory, _ := os.Getwd()
-	dateToday := time.Now().Format("01-02-2006")
+func backupRepos(clone bool) map[string]any {
+
 	user := gjson.Get(responseContent(ghRequest("https://api.github.com/user").Body), "login")
 	fmt.Println("User: " + user.String())
 	var repoSlice []repoStruct
@@ -79,12 +82,12 @@ func cloneRepos(clone bool) map[string]any {
 			repos[repoSlice[i].Name] = repoSlice[i].HTMLURL
 		}
 	}
+	allRepos["repos"] = repos
 	return repos
 }
 
-func cloneStars(clone bool) map[string]any {
-	currentDirectory, _ := os.Getwd()
-	dateToday := time.Now().Format("01-02-2006")
+func backupStars(clone bool) map[string]any {
+
 	user := gjson.Get(responseContent(ghRequest("https://api.github.com/user").Body), "login")
 	fmt.Println("User: " + user.String())
 	var starSlice []repoStruct
@@ -116,6 +119,7 @@ func cloneStars(clone bool) map[string]any {
 			stars[starSlice[i].Name] = starSlice[i].HTMLURL
 		}
 	}
+	allRepos["stars"] = stars
 	return stars
 }
 
@@ -191,25 +195,6 @@ func loadToken() string {
 	return os.Getenv("GITHUB_TOKEN")
 }
 
-func mergeRepoJson(repos map[string]any, stars map[string]any) {
-	currentDirectory, _ := os.Getwd()
-	dateToday := time.Now().Format("01-02-2006")
-	backupDirectory := filepath.Dir(currentDirectory + "/github-backup-" + dateToday + "/")
-	mergedMap := map[string]map[string]any{}
-	mergedMap["repos"] = repos
-	mergedMap["stars"] = stars
-	mergedJson, err := json.Marshal(mergedMap)
-	if err != nil {
-		fmt.Printf("Error:\n%v\n", err)
-	}
-	fmt.Println(mergedJson)
-
-	// Check if there is a backup folder for the current day
-	_, err = os.Stat(backupDirectory)
-	fmt.Printf("Error Type:\n%T\nError:\n%v\n", err, err)
-
-}
-
 // Menus
 
 func mainMenu() {
@@ -236,11 +221,11 @@ func backupMenu() {
 	backupSelection = strings.TrimSpace(backupSelection)
 	switch backupSelection {
 	case "1":
-		cloneRepos(true)
+		backupRepos(true)
 	case "2":
-		cloneStars(true)
+		backupStars(true)
 	case "3":
-		cloneRepos(true)
-		cloneStars(true)
+		backupRepos(true)
+		backupStars(true)
 	}
 }
