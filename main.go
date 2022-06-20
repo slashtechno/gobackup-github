@@ -32,20 +32,48 @@ var currentDirectory, _ = os.Getwd()
 var dateToday = time.Now().Format("01-02-2006")
 var allRepos = map[string]any{}
 
+var repoFlag = flag.Bool("backup-repos", false, "Set this flag to backup your repositories and skip the interactive UI (can be combined with backup-stars)")
+var starFlag = flag.Bool("backup-stars", false, "Set this flag to backup your starred repositoriesand skip the interactive UI (can be combined with backup-repos)")
+var skipList = flag.Bool("skip-list", false, "Set this flag to skip creating a list of all repositories")
+var listOnly = flag.Bool("list-only", false, "Set this flag to only generate a list of all repositories and skip cloning. Should not be used with skip-list")
+
 func main() {
 	godotenv.Load()
-	repoFlag := flag.Bool("backup-repos", false, "Set this flag to backup your repositories and skip the interactive UI (can be combined with backup-stars)")
-	starFlag := flag.Bool("backup-stars", false, "Set this flag to backup your starred repositoriesand skip the interactive UI (can be combined with backup-repos)")
 	flag.Parse()
 	if *repoFlag && *starFlag {
-		backupRepos(true)
-		backupStars(true)
+		backupRepos(!*listOnly)
+		backupStars(!*listOnly)
 	} else if *repoFlag {
-		backupRepos(true)
+		backupRepos(!*listOnly)
 	} else if *starFlag {
-		backupStars(true)
+		backupStars(!*listOnly)
 	} else {
 		mainMenu()
+	}
+	if !*skipList {
+		backupDirectory := filepath.Dir(currentDirectory + "/github-backup-" + dateToday + "/")
+		_, err := os.Stat(backupDirectory)
+		if os.IsExist(err) {
+			file, err := os.Create(filepath.Join(backupDirectory, "github-all-repos.json"))
+			if err != nil {
+				fmt.Printf("Error:\n%v\n", err)
+			}
+			repoJsonByte, err := json.Marshal(allRepos)
+			if err != nil {
+				fmt.Printf("Error:\n%v\n", err)
+			}
+			file.Write(repoJsonByte)
+		} else {
+			file, err := os.Create(filepath.Join("github-all-repos-") + dateToday + ".json")
+			if err != nil {
+				fmt.Printf("Error:\n%v\n", err)
+			}
+			repoJsonByte, err := json.Marshal(allRepos)
+			if err != nil {
+				fmt.Printf("Error:\n%v\n", err)
+			}
+			file.Write(repoJsonByte)
+		}
 	}
 }
 
@@ -221,11 +249,11 @@ func backupMenu() {
 	backupSelection = strings.TrimSpace(backupSelection)
 	switch backupSelection {
 	case "1":
-		backupRepos(true)
+		backupRepos(!*listOnly)
 	case "2":
-		backupStars(true)
+		backupStars(!*listOnly)
 	case "3":
-		backupRepos(true)
-		backupStars(true)
+		backupRepos(!*listOnly)
+		backupStars(!*listOnly)
 	}
 }
