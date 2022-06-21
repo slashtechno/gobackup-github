@@ -32,10 +32,10 @@ var currentDirectory, _ = os.Getwd()
 var dateToday = time.Now().Format("01-02-2006")
 var allRepos = map[string]any{}
 
-var repoFlag = flag.Bool("backup-repos", false, "Set this flag to backup your repositories and skip the interactive UI (can be combined with backup-stars)")
-var starFlag = flag.Bool("backup-stars", false, "Set this flag to backup your starred repositoriesand skip the interactive UI (can be combined with backup-repos)")
-var skipList = flag.Bool("skip-list", false, "Set this flag to skip creating a list of all repositories")
-var listOnly = flag.Bool("list-only", false, "Set this flag to only generate a list of all repositories and skip cloning. Should not be used with skip-list")
+var repoFlag = flag.Bool("backup-repos", false, "Set this flag to backup your repositories and SKIP the interactive UI (can be combined with backup-stars)")
+var starFlag = flag.Bool("backup-stars", false, "Set this flag to backup your starred repositoriesand SKIP the interactive UI (can be combined with backup-repos)")
+var skipList = flag.Bool("skip-list", false, "Set this flag to skip creating a list of the specified repositories")
+var listOnly = flag.Bool("list-only", false, "Set this flag to only generate a list of the repositories specified and skip cloning. Should not be used with skip-list")
 
 func main() {
 	godotenv.Load()
@@ -58,7 +58,7 @@ func main() {
 			if err != nil {
 				fmt.Printf("Error:\n%v\n", err)
 			}
-			repoJsonByte, err := json.Marshal(allRepos)
+			repoJsonByte, err := json.MarshalIndent(allRepos, "", "    ")
 			if err != nil {
 				fmt.Printf("Error:\n%v\n", err)
 			}
@@ -68,7 +68,7 @@ func main() {
 			if err != nil {
 				fmt.Printf("Error:\n%v\n", err)
 			}
-			repoJsonByte, err := json.Marshal(allRepos)
+			repoJsonByte, err := json.MarshalIndent(allRepos, "", "    ")
 			if err != nil {
 				fmt.Printf("Error:\n%v\n", err)
 			}
@@ -240,6 +240,7 @@ func mainMenu() {
 }
 
 func backupMenu() {
+	flag.Parse()
 	fmt.Println(`What should this program backup?
 1) Your public and private repositories
 2) Your starred repositories
@@ -250,8 +251,10 @@ func backupMenu() {
 	switch backupSelection {
 	case "1":
 		backupRepos(!*listOnly)
+		backupStars(false)
 	case "2":
 		backupStars(!*listOnly)
+		backupRepos(false)
 	case "3":
 		backupRepos(!*listOnly)
 		backupStars(!*listOnly)
