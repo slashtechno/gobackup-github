@@ -19,3 +19,7 @@ These are examples, for full usage info, run `gobackup-github -h`
 
 ### Why?  
 I wanted a simple way to backup my Github repositories. I also wanted to learn Go and APIs. Thus, I started this project as a way to create my first Go project, use the Github API, and make a utility to backup Github repositories.
+
+### Roadmap  
+- [ ] Simplify command line flags
+- [ ] Allow interactive backups of individual starred repositories
