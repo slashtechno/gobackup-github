@@ -27,7 +27,7 @@ jobs:
         prefix: gobackup-github
         # targets: windows/amd64,linux/amd64,linux/arm64,darwin/arm64,windows/arm,windows/arm64,linux/arm,darwin/amd64
     - name: Compress releases
-      run: zip -r /home/runner/work/gobackup-githubr/binaries.zip /home/runner/work/gobackup-github/builds/*
+      run: zip -r /home/runner/work/gobackup-github/binaries.zip /home/runner/work/gobackup-github/builds/*
     - name: Release
       uses: softprops/action-gh-release@v0.1.14
       with:
