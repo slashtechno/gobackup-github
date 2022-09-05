@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"net/http"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/TwiN/go-color"
 	"github.com/go-git/go-git/v5"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/joho/godotenv"
@@ -34,10 +36,15 @@ var allRepos = map[string]any{}
 
 var repoFlag = flag.Bool("backup-repos", false, "Set this flag to backup your repositories and SKIP the interactive UI (can be combined with backup-stars)")
 var starFlag = flag.Bool("backup-stars", false, "Set this flag to backup your starred repositoriesand SKIP the interactive UI (can be combined with backup-repos)")
-var skipList = flag.Bool("skip-list", false, "Set this flag to skip creating a list of the specified repositories")
+var skipStarListFlag = flag.Bool("skip-star-list", false, "Set this flag to skip creating a list of starred repositories")
+var skipRepoListFlag = flag.Bool("skip-repo-list", false, "Set this flag to skip creating a list of your repositories") // Might be a good idea to rename flag as skipRepoList may be thought of as all repos
 var listOnly = flag.Bool("list-only", false, "Set this flag to only generate a list of the repositories specified and skip cloning. Should not be used with skip-list")
 
 func main() {
+	flag.Usage = func() {
+		fmt.Fprintln(flag.CommandLine.Output(), color.InBold("Usage:"))
+		flag.PrintDefaults()
+	}
 	godotenv.Load()
 	flag.Parse()
 	if *repoFlag && *starFlag {
@@ -50,30 +57,27 @@ func main() {
 	} else {
 		mainMenu()
 	}
-	if !*skipList {
-		backupDirectory := filepath.Dir(currentDirectory + "/github-backup-" + dateToday + "/")
-		_, err := os.Stat(backupDirectory)
-		if os.IsExist(err) {
-			file, err := os.Create(filepath.Join(backupDirectory, "github-all-repos.json"))
-			if err != nil {
-				fmt.Printf("Error:\n%v\n", err)
-			}
-			repoJsonByte, err := json.MarshalIndent(allRepos, "", "    ")
-			if err != nil {
-				fmt.Printf("Error:\n%v\n", err)
-			}
-			file.Write(repoJsonByte)
-		} else {
-			file, err := os.Create(filepath.Join("github-all-repos-") + dateToday + ".json")
-			if err != nil {
-				fmt.Printf("Error:\n%v\n", err)
-			}
-			repoJsonByte, err := json.MarshalIndent(allRepos, "", "    ")
-			if err != nil {
-				fmt.Printf("Error:\n%v\n", err)
-			}
-			file.Write(repoJsonByte)
-		}
+	savedRepos := allRepos
+	if *skipStarListFlag {
+		delete(savedRepos, "stars")
+	}
+	if *skipRepoListFlag {
+		delete(savedRepos, "repos")
+	}
+	backupDirectory := filepath.Dir(currentDirectory + "/github-backup-" + dateToday + "/")
+	_, err := os.Stat(backupDirectory)
+	if os.IsExist(err) {
+		file, err := os.Create(filepath.Join(backupDirectory, "github-repository-list.json"))
+		checkNilErr(err)
+		repoJsonByte, err := json.MarshalIndent(allRepos, "", "    ")
+		checkNilErr(err)
+		file.Write(repoJsonByte)
+	} else {
+		file, err := os.Create(filepath.Join("github-repository-list-") + dateToday + ".json")
+		checkNilErr(err)
+		repoJsonByte, err := json.MarshalIndent(allRepos, "", "    ")
+		checkNilErr(err)
+		file.Write(repoJsonByte)
 	}
 }
 
@@ -88,9 +92,7 @@ func backupRepos(clone bool) map[string]any {
 	for i := 1; i <= neededPages; i++ {
 		repoJSON := responseContent(ghRequest("https://api.github.com/user/repos?per_page=100&page=" + strconv.Itoa(i)).Body)
 		err := json.Unmarshal([]byte(repoJSON), &repoSlice)
-		if err != nil {
-			fmt.Printf("Error:\n%v\n", err)
-		}
+		checkNilErr(err)
 		for i := 0; i < len(repoSlice); i++ {
 			owner := repoSlice[i].Owner.Login
 			if clone {
@@ -103,9 +105,7 @@ func backupRepos(clone bool) map[string]any {
 						Password: loadToken(),
 					},
 				})
-				if err != nil {
-					fmt.Println(err)
-				}
+				checkNilErr(err)
 			}
 			repos[repoSlice[i].Name] = repoSlice[i].HTMLURL
 		}
@@ -125,9 +125,7 @@ func backupStars(clone bool) map[string]any {
 	for i := 1; i <= neededPages; i++ {
 		repoJSON := responseContent(ghRequest("https://api.github.com/user/starred?per_page=100&page=" + strconv.Itoa(i)).Body)
 		err := json.Unmarshal([]byte(repoJSON), &starSlice)
-		if err != nil {
-			fmt.Printf("Error:\n%v\n", err)
-		}
+		checkNilErr(err)
 		for i := 0; i < len(starSlice); i++ {
 			owner := starSlice[i].Owner.Login
 			if clone {
@@ -140,9 +138,7 @@ func backupStars(clone bool) map[string]any {
 						Password: loadToken(),
 					},
 				})
-				if err != nil {
-					fmt.Println(err)
-				}
+				checkNilErr(err)
 			}
 			stars[starSlice[i].Name] = starSlice[i].HTMLURL
 		}
@@ -169,16 +165,12 @@ func calculateNeededPages(whichRepos string) int {
 		perPage := 100
 		starJSON := responseContent(ghRequest("https://api.github.com/user/starred?page=1&per_page=" + strconv.Itoa(perPage)).Body)
 		err := json.Unmarshal([]byte(starJSON), &starSlice)
-		if err != nil {
-			fmt.Printf("Error:\n%v\n", err)
-		}
+		checkNilErr(err)
 		for len(starSlice) != 0 { // if len(starSlice) == perPage {
 			pageNumber++
 			starJSON := responseContent(ghRequest("https://api.github.com/user/starred?page=" + strconv.Itoa(pageNumber) + "&per_page=" + strconv.Itoa(perPage)).Body)
 			err := json.Unmarshal([]byte(starJSON), &starSlice)
-			if err != nil {
-				fmt.Printf("Error:\n%v\n", err)
-			}
+			checkNilErr(err)
 
 		}
 		return pageNumber
@@ -189,24 +181,18 @@ func calculateNeededPages(whichRepos string) int {
 
 func responseContent(responseBody io.ReadCloser) string {
 	bytes, err := io.ReadAll(responseBody)
-	if err != nil {
-		fmt.Printf("Error:\n%v\n", err)
-	}
+	checkNilErr(err)
 	return string(bytes)
 }
 
 func ghRequest(url string) *http.Response {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		fmt.Printf("Error:\n%v\n", err)
-	}
+	checkNilErr(err)
 	req.Header.Set("Authorization", "token "+loadToken())
 	// req.Header.Set("Accept", "application/vnd.github.v3+json")
 	req.Header.Set("Accept", "testing-github-api")
 	response, err := http.DefaultClient.Do(req)
-	if err != nil {
-		fmt.Printf("Error:\n%v\n", err)
-	}
+	checkNilErr(err)
 	if response.StatusCode != 200 {
 		fmt.Println("Something went wrong, status code is not \"200 OK\"")
 		fmt.Println("Response status code: " + response.Status)
@@ -258,5 +244,12 @@ func backupMenu() {
 	case "3":
 		backupRepos(!*listOnly)
 		backupStars(!*listOnly)
+	}
+}
+
+func checkNilErr(err any) {
+	if err != nil {
+		// log.Fatalln("Error:\n%v\n", err)
+		log.Fatalln(err)
 	}
 }
