@@ -84,11 +84,11 @@ func main() {
 func backupRepos(clone bool) map[string]any {
 
 	user := gjson.Get(responseContent(ghRequest("https://api.github.com/user").Body), "login")
-	fmt.Println("User: " + user.String())
+	log.Println("User: " + user.String())
 	var repoSlice []repoStruct
 	repos := map[string]any{}
 	neededPages := calculateNeededPages("userRepos")
-	fmt.Println("Getting list of repositories")
+	log.Println("Getting list of repositories")
 	for i := 1; i <= neededPages; i++ {
 		repoJSON := responseContent(ghRequest("https://api.github.com/user/repos?per_page=100&page=" + strconv.Itoa(i)).Body)
 		err := json.Unmarshal([]byte(repoJSON), &repoSlice)
@@ -97,7 +97,7 @@ func backupRepos(clone bool) map[string]any {
 			owner := repoSlice[i].Owner.Login
 			if clone {
 				cloneDirectory := filepath.Dir(currentDirectory + "/github-backup-" + dateToday + "/your-repos/" + owner + "_" + repoSlice[i].Name + "/")
-				fmt.Printf("Cloning %v (iteration %v) to %v\n", repoSlice[i].Name, i+1, cloneDirectory)
+				log.Printf("Cloning %v (iteration %v) to %v\n", repoSlice[i].Name, i+1, cloneDirectory)
 				_, err = git.PlainClone(cloneDirectory, false, &git.CloneOptions{
 					URL: repoSlice[i].HTMLURL,
 					Auth: &githttp.BasicAuth{
@@ -117,11 +117,11 @@ func backupRepos(clone bool) map[string]any {
 func backupStars(clone bool) map[string]any {
 
 	user := gjson.Get(responseContent(ghRequest("https://api.github.com/user").Body), "login")
-	fmt.Println("User: " + user.String())
+	log.Println("User: " + user.String())
 	var starSlice []repoStruct
 	stars := map[string]any{}
 	neededPages := calculateNeededPages("userStars")
-	fmt.Println("Getting list of starred repositories")
+	log.Println("Getting list of starred repositories")
 	for i := 1; i <= neededPages; i++ {
 		repoJSON := responseContent(ghRequest("https://api.github.com/user/starred?per_page=100&page=" + strconv.Itoa(i)).Body)
 		err := json.Unmarshal([]byte(repoJSON), &starSlice)
@@ -130,7 +130,7 @@ func backupStars(clone bool) map[string]any {
 			owner := starSlice[i].Owner.Login
 			if clone {
 				cloneDirectory := filepath.Dir(currentDirectory + "/github-backup-" + dateToday + "/your-stars/" + owner + "_" + starSlice[i].Name + "/")
-				fmt.Printf("Cloning %v (iteration %v) to %v\n", starSlice[i].Name, i, cloneDirectory)
+				log.Printf("Cloning %v (iteration %v) to %v\n", starSlice[i].Name, i, cloneDirectory)
 				_, err = git.PlainClone(cloneDirectory, false, &git.CloneOptions{
 					URL: starSlice[i].HTMLURL,
 					Auth: &githttp.BasicAuth{
@@ -154,10 +154,10 @@ func calculateNeededPages(whichRepos string) int {
 		publicRepos := gjson.Get(json, "public_repos")
 		privateRepos := gjson.Get(json, "total_private_repos")
 		totalRepos := publicRepos.Num + privateRepos.Num
-		fmt.Println("Total repositories: " + strconv.Itoa(int(totalRepos)))
+		log.Println("Total repositories: " + strconv.Itoa(int(totalRepos)))
 		neededPages := math.Ceil(totalRepos / 100)
 		// fmt.Println(neededPages)
-		fmt.Println("Total pages needed:" + strconv.Itoa(int(neededPages)))
+		log.Println("Total pages needed:" + strconv.Itoa(int(neededPages)))
 		return int(neededPages)
 	} else if whichRepos == "userStars" {
 		var starSlice []repoStruct
@@ -194,10 +194,10 @@ func ghRequest(url string) *http.Response {
 	response, err := http.DefaultClient.Do(req)
 	checkNilErr(err)
 	if response.StatusCode != 200 {
-		fmt.Println("Something went wrong, status code is not \"200 OK\"")
-		fmt.Println("Response status code: " + response.Status)
+		log.Println("Something went wrong, status code is not \"200 OK\"")
+		log.Println("Response status code: " + response.Status)
 		if response.StatusCode == 401 {
-			fmt.Println("You may have an incorrect Github personal token")
+			log.Println("You may have an incorrect Github personal token")
 		}
 		os.Exit(1)
 
