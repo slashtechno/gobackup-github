@@ -1,4 +1,4 @@
-name: Build on Ubuntu and Windows
+name: Build on multiple platforms
 on:
   push: 
   pull_request: 
@@ -10,6 +10,7 @@ jobs:
         os:
           - ubuntu-latest
           - windows-latest
+          - macos-latest
     runs-on: '${{ matrix.os }}'
     steps:
       - uses: actions/checkout@v3
