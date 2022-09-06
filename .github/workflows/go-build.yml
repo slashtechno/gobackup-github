@@ -28,4 +28,5 @@ jobs:
       - uses: actions/upload-artifact@v3
         with:
           name: binaries
-          path: 'gobackup-github_compiled_${{ matrix.os }}'
+          # path: 'gobackup-github_compiled_${{ matrix.os }}'
+          path: 'gobackup-github_compiled_*'
