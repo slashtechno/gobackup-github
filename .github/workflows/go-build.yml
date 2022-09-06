@@ -1,4 +1,4 @@
-name: Go
+name: Build on Ubuntu and Windows
 on:
   push: 
   pull_request: 
