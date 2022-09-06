@@ -23,4 +23,4 @@ jobs:
       - uses: actions/upload-artifact@v3
         with:
           name: my-artifact
-          path: 'go build -o gobackup-github_compiled_${{ matrix.os }}'
+          path: 'gobackup-github_compiled_${{ matrix.os }}'
