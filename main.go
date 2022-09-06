@@ -31,6 +31,8 @@ type repoStruct struct {
 }
 
 var currentDirectory, _ = os.Getwd()
+var backupDirectory = filepath.Join(currentDirectory + "/github-backup-" + dateToday)
+
 var dateToday = time.Now().Format("01-02-2006")
 var allRepos = map[string]any{}
 
@@ -52,8 +54,10 @@ func main() {
 		backupStars(!*listOnly)
 	} else if *repoFlag {
 		backupRepos(!*listOnly)
+		backupStars(false)
 	} else if *starFlag {
 		backupStars(!*listOnly)
+		backupRepos(false)
 	} else {
 		mainMenu()
 	}
@@ -64,16 +68,17 @@ func main() {
 	if *skipRepoListFlag {
 		delete(savedRepos, "repos")
 	}
-	backupDirectory := filepath.Dir(currentDirectory + "/github-backup-" + dateToday + "/")
 	_, err := os.Stat(backupDirectory)
-	if os.IsExist(err) {
-		file, err := os.Create(filepath.Join(backupDirectory, "github-repository-list.json"))
+	if os.IsNotExist(err) {
+		file, err := os.Create(filepath.Join("github-repository-list-") + dateToday + ".json")
+		log.Println("Creating file at " + filepath.Join("github-repository-list-") + dateToday + ".json") // For debugging
 		checkNilErr(err)
 		repoJsonByte, err := json.MarshalIndent(allRepos, "", "    ")
 		checkNilErr(err)
 		file.Write(repoJsonByte)
 	} else {
-		file, err := os.Create(filepath.Join("github-repository-list-") + dateToday + ".json")
+		file, err := os.Create(filepath.Join(backupDirectory, "github-repository-list.json"))
+		log.Println("Creating file at " + filepath.Join(backupDirectory, "github-repository-list.json")) // For debugging
 		checkNilErr(err)
 		repoJsonByte, err := json.MarshalIndent(allRepos, "", "    ")
 		checkNilErr(err)
@@ -96,7 +101,7 @@ func backupRepos(clone bool) map[string]any {
 		for i := 0; i < len(repoSlice); i++ {
 			owner := repoSlice[i].Owner.Login
 			if clone {
-				cloneDirectory := filepath.Dir(currentDirectory + "/github-backup-" + dateToday + "/your-repos/" + owner + "_" + repoSlice[i].Name + "/")
+				cloneDirectory := filepath.Join(backupDirectory, "your-repos", owner+"_"+repoSlice[i].Name)
 				log.Printf("Cloning %v (iteration %v) to %v\n", repoSlice[i].Name, i+1, cloneDirectory)
 				_, err = git.PlainClone(cloneDirectory, false, &git.CloneOptions{
 					URL: repoSlice[i].HTMLURL,
@@ -129,7 +134,7 @@ func backupStars(clone bool) map[string]any {
 		for i := 0; i < len(starSlice); i++ {
 			owner := starSlice[i].Owner.Login
 			if clone {
-				cloneDirectory := filepath.Dir(currentDirectory + "/github-backup-" + dateToday + "/your-stars/" + owner + "_" + starSlice[i].Name + "/")
+				cloneDirectory := filepath.Join(backupDirectory, "your-stars", owner+"_"+starSlice[i].Name)
 				log.Printf("Cloning %v (iteration %v) to %v\n", starSlice[i].Name, i, cloneDirectory)
 				_, err = git.PlainClone(cloneDirectory, false, &git.CloneOptions{
 					URL: starSlice[i].HTMLURL,
