@@ -38,8 +38,8 @@ var allRepos = map[string]any{}
 
 var repoFlag = flag.Bool("backup-repos", false, "Set this flag to backup your repositories and SKIP the interactive UI (can be combined with backup-stars)")
 var starFlag = flag.Bool("backup-stars", false, "Set this flag to backup your starred repositoriesand SKIP the interactive UI (can be combined with backup-repos)")
-var skipStarListFlag = flag.Bool("skip-star-list", false, "Set this flag to skip creating a list of starred repositories")
-var skipRepoListFlag = flag.Bool("skip-repo-list", false, "Set this flag to skip creating a list of your repositories") // Might be a good idea to rename flag as skipRepoList may be thought of as all repos
+var createStarListFlag = flag.Bool("create-star-list", false, "Set this flag to create a list of starred repositories")
+var createRepoListFlag = flag.Bool("create-repo-list", false, "Set this flag to create a list of your repositories")
 var listOnly = flag.Bool("list-only", false, "Set this flag to only generate a list of the repositories specified and skip cloning. Should not be used with skip-list")
 
 func main() {
@@ -61,28 +61,35 @@ func main() {
 	} else {
 		mainMenu()
 	}
-	savedRepos := allRepos
-	if *skipStarListFlag {
-		delete(savedRepos, "stars")
+	var savedRepos = make(map[string]any, 2)
+	// for k, v := range allRepos {
+	// 	savedRepos[k] = v
+	// }
+	if *createRepoListFlag {
+		savedRepos["repos"] = allRepos["repos"]
 	}
-	if *skipRepoListFlag {
-		delete(savedRepos, "repos")
+	if *createStarListFlag {
+		savedRepos["stars"] = allRepos["stars"]
 	}
-	_, err := os.Stat(backupDirectory)
-	if os.IsNotExist(err) {
-		file, err := os.Create(filepath.Join("github-repository-list-") + dateToday + ".json")
-		log.Println("Creating file at " + filepath.Join("github-repository-list-") + dateToday + ".json") // For debugging
-		checkNilErr(err)
-		repoJsonByte, err := json.MarshalIndent(allRepos, "", "    ")
-		checkNilErr(err)
-		file.Write(repoJsonByte)
-	} else {
-		file, err := os.Create(filepath.Join(backupDirectory, "github-repository-list.json"))
-		log.Println("Creating file at " + filepath.Join(backupDirectory, "github-repository-list.json")) // For debugging
-		checkNilErr(err)
-		repoJsonByte, err := json.MarshalIndent(allRepos, "", "    ")
-		checkNilErr(err)
-		file.Write(repoJsonByte)
+	if len(savedRepos) != 0 {
+		_, err := os.Stat(backupDirectory)
+		if os.IsNotExist(err) {
+			file, err := os.Create(filepath.Join("github-repository-list-") + dateToday + ".json")
+			log.Println("Creating file at " + filepath.Join("github-repository-list-") + dateToday + ".json") // For debugging
+			checkNilErr(err)
+			repoJsonByte, err := json.MarshalIndent(savedRepos, "", "    ")
+			checkNilErr(err)
+			file.Write(repoJsonByte)
+		} else {
+			file, err := os.Create(filepath.Join(backupDirectory, "github-repository-list.json"))
+			log.Println("Creating file at " + filepath.Join(backupDirectory, "github-repository-list.json")) // For debugging
+			checkNilErr(err)
+			repoJsonByte, err := json.MarshalIndent(savedRepos, "", "    ")
+			checkNilErr(err)
+			file.Write(repoJsonByte)
+		}
+	} else{
+		log.Println("No repositories were recorded")
 	}
 }
 
