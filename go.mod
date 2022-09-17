@@ -1,4 +1,4 @@
-module gobackup-github
+module github.com/slashtechno/gobackup-github
 
 go 1.18
 
