@@ -41,6 +41,7 @@ jobs:
         # tag_name: ${{ steps.commit.outputs.short }}
         tag_name: rolling_release
         # generate_release_notes: true
+        body: "Latest commit: ${{ github.event.head_commit.message }}"
         files: |
           /home/runner/work/gobackup-github/binaries.zip 
           /home/runner/work/gobackup-github/builds/*
