@@ -32,14 +32,17 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN  }}
       with:
-        tag_name: rolling_release
+        tag_name: rolling
+    - name: Delete tag
+      uses: t-actions/delete-tag@master
+      tag: rolling
     - name: Release
       uses: softprops/action-gh-release@v1
       with:
         name: Rolling release
         prerelease: true
         # tag_name: ${{ steps.commit.outputs.short }}
-        tag_name: rolling_release
+        tag_name: rolling
         # generate_release_notes: true
         body: "Latest commit: ${{ github.event.head_commit.message }}"
         files: |
