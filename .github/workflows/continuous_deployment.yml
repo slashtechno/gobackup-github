@@ -27,13 +27,13 @@ jobs:
         # targets: windows/amd64,linux/amd64,linux/arm64,darwin/arm64,windows/arm,windows/arm64,linux/arm,darwin/amd64
     - name: Compress releases
       run: zip -r /home/runner/work/gobackup-github/binaries.zip /home/runner/work/gobackup-github/builds/*
-    - name: Delete old release
-      uses: Archaholic/action-delete-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN  }}
-      with:
-        name: Rolling release
-        tag: rolling_release
+    # - name: Delete old release
+    #   uses: Archaholic/action-delete-release@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN  }}
+    #   with:
+    #     name: Rolling release
+    #     tag: rolling_release
     - name: Release
       uses: softprops/action-gh-release@v1
       with:
