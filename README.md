@@ -7,7 +7,7 @@ Go program that utilizes the Github API to backup all repositories for a user. I
 2. Either download a binary for your system from releases, or build the program yourself with `go build`   
 3. Create a `.env` file  
 4. Add `GITHUB_TOKEN = TOKEN` to `.env` (replace TOKEN with your token)  
-5. Run the binary in the same download as your `.env` file  
+5. Run the binary in the same folder as your `.env` file  
 
 ### CLI Flag Examples  
 These are examples, for full usage info, run `gobackup-github -h`  
