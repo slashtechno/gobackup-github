@@ -12,12 +12,10 @@ Go program that utilizes the Github API to backup all repositories for a user. I
 ### CLI Flag Examples  
 These are examples, for full usage info, run `gobackup-github -h`  
 * `gobackup-github` - Use the interactive UI (flags can be added)  
-* `gobackup-github --backup-repos` - Backup your repositories without using the interactive interface  
-* `gobackup-github --backup-stars` - Backup your starred repositories without using the interactive interface
+* `gobackup-github --backup-repos` - Backup your repositories without using the UI  
+* `gobackup-github --backup-stars` - Backup your starred repositories without using the UI  
 * `gobackup-github --backup-stars --backup-repos` - Backup your repositories and your starred repositories  
-* `gobackup-github --list-only --create-star-list --create-repo-list -backup-repos` - Record the names and URLs of repositories selected in the UI in a JSON file (skip cloning)  
-    * `-backup-repos` is added to skip using the interactive interface. `backup-stars` can be used too  
-    * To avoid this, a `no-interaction` flag may be added  
+* `gobackup-github --skip-clone --create-star-list --create-repo-list -skip-interaction` - Record the names and URLs of starred and owned repositories, without cloning them  
 * `gobackup-github -create-star-list` - Use the interactive interface, but also create a list of starred repositories  
 
 ### Why?  

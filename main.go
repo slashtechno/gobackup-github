@@ -40,8 +40,8 @@ var repoFlag = flag.Bool("backup-repos", false, "Set this flag to backup your re
 var starFlag = flag.Bool("backup-stars", false, "Set this flag to backup your starred repositoriesand SKIP the interactive UI (can be combined with backup-repos)")
 var createStarListFlag = flag.Bool("create-star-list", false, "Set this flag to create a list of starred repositories")
 var createRepoListFlag = flag.Bool("create-repo-list", false, "Set this flag to create a list of your repositories")
-var listOnly = flag.Bool("list-only", false, "Set this flag to only generate a list of the repositories specified and skip cloning. Should not be used with skip-list")
-
+var skipCloneFlag = flag.Bool("skip-clone", false, "Set this flag to skip cloning repositories. Recommended use is when creating records of repositories")
+var noInteractFlag = flag.Bool("skip-interaction", false, "Set this flag to skip the user interface. Recommended use is when creating records of repositories")
 var ranRepoBackup = false
 var ranStarBackup = false
 
@@ -53,12 +53,14 @@ func main() {
 	godotenv.Load()
 	flag.Parse()
 	if *repoFlag && *starFlag {
-		backupRepos(!*listOnly)
-		backupStars(!*listOnly)
+		backupRepos(!*skipCloneFlag)
+		backupStars(!*skipCloneFlag)
 	} else if *repoFlag {
-		backupRepos(!*listOnly)
+		backupRepos(!*skipCloneFlag)
 	} else if *starFlag {
-		backupStars(!*listOnly)
+		backupStars(!*skipCloneFlag)
+	} else if *noInteractFlag {
+		log.Println("\"skip-interaction\" was set. Skipping UI")
 	} else {
 		mainMenu()
 	}
@@ -255,12 +257,12 @@ func backupMenu() {
 	backupSelection = strings.TrimSpace(backupSelection)
 	switch backupSelection {
 	case "1":
-		backupRepos(!*listOnly)
+		backupRepos(!*skipCloneFlag)
 	case "2":
-		backupStars(!*listOnly)
+		backupStars(!*skipCloneFlag)
 	case "3":
-		backupRepos(!*listOnly)
-		backupStars(!*listOnly)
+		backupRepos(!*skipCloneFlag)
+		backupStars(!*skipCloneFlag)
 	}
 }
 
