@@ -6,12 +6,12 @@ on:
 
 jobs:
 
-  build:
+  build-and-release:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - id: commit
-      uses: pr-mpt/actions-commit-hash@v1
+    # - id: commit
+    #   uses: pr-mpt/actions-commit-hash@v1
 
     # - name: Set up Go
     #   uses: actions/setup-go@v3
@@ -40,6 +40,7 @@ jobs:
         prerelease: true
         # tag_name: ${{ steps.commit.outputs.short }}
         tag_name: rolling_release
+        generate_release_notes: true
         files: |
           /home/runner/work/gobackup-github/binaries.zip 
           /home/runner/work/gobackup-github/builds/*
