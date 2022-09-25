@@ -35,7 +35,8 @@ jobs:
         tag_name: rolling
     - name: Delete tag
       uses: t-actions/delete-tag@master
-      tag: rolling
+      with: 
+        tag: rolling
     - name: Release
       uses: softprops/action-gh-release@v1
       with:
