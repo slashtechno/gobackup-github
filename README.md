@@ -1,5 +1,5 @@
 # gobackup-github  
-[![Build on multiple platforms](https://github.com/slashtechno/gobackup-github/actions/workflows/go-build.yml/badge.svg)](https://github.com/slashtechno/gobackup-github/actions/workflows/go-build.yml)  
+[![Build on multiple platforms](https://github.com/slashtechno/gobackup-github/actions/workflows/go-build.yml/badge.svg)](https://github.com/slashtechno/gobackup-github/actions/workflows/go-build.yml)![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/slashtechno/gobackup-github)
 Go program that utilizes the Github API to backup all repositories for a user. In addition, can backup starred repositories  
 
 ### Setup  
