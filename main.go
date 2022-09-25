@@ -42,6 +42,9 @@ var createStarListFlag = flag.Bool("create-star-list", false, "Set this flag to 
 var createRepoListFlag = flag.Bool("create-repo-list", false, "Set this flag to create a list of your repositories")
 var listOnly = flag.Bool("list-only", false, "Set this flag to only generate a list of the repositories specified and skip cloning. Should not be used with skip-list")
 
+var ranRepoBackup = false
+var ranStarBackup = false
+
 func main() {
 	flag.Usage = func() {
 		fmt.Fprintln(flag.CommandLine.Output(), color.InBold("Usage:"))
@@ -54,10 +57,8 @@ func main() {
 		backupStars(!*listOnly)
 	} else if *repoFlag {
 		backupRepos(!*listOnly)
-		backupStars(false)
 	} else if *starFlag {
 		backupStars(!*listOnly)
-		backupRepos(false)
 	} else {
 		mainMenu()
 	}
@@ -66,9 +67,15 @@ func main() {
 	// 	savedRepos[k] = v
 	// }
 	if *createRepoListFlag {
+		if !ranRepoBackup {
+			backupRepos(false)
+		}
 		savedRepos["repos"] = allRepos["repos"]
 	}
 	if *createStarListFlag {
+		if !ranStarBackup {
+			backupStars(false)
+		}
 		savedRepos["stars"] = allRepos["stars"]
 	}
 	if len(savedRepos) != 0 {
@@ -88,13 +95,13 @@ func main() {
 			checkNilErr(err)
 			file.Write(repoJsonByte)
 		}
-	} else{
+	} else {
 		log.Println("No repositories were recorded")
 	}
 }
 
 func backupRepos(clone bool) map[string]any {
-
+	ranRepoBackup = true
 	user := gjson.Get(responseContent(ghRequest("https://api.github.com/user").Body), "login")
 	log.Println("User: " + user.String())
 	var repoSlice []repoStruct
@@ -127,7 +134,7 @@ func backupRepos(clone bool) map[string]any {
 }
 
 func backupStars(clone bool) map[string]any {
-
+	ranStarBackup = true
 	user := gjson.Get(responseContent(ghRequest("https://api.github.com/user").Body), "login")
 	log.Println("User: " + user.String())
 	var starSlice []repoStruct
@@ -249,10 +256,8 @@ func backupMenu() {
 	switch backupSelection {
 	case "1":
 		backupRepos(!*listOnly)
-		backupStars(false)
 	case "2":
 		backupStars(!*listOnly)
-		backupRepos(false)
 	case "3":
 		backupRepos(!*listOnly)
 		backupStars(!*listOnly)

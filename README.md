@@ -4,7 +4,7 @@ Go program that utilizes the Github API to backup all repositories for a user. I
 
 ### Setup  
 1. Create a Github personal access token with the following scopes:  `read:user, repo`  
-2. Either download a binary for your system from releases, or build the program yourself with `go build` (`go run` can also work)  
+2. Either download a binary for your system from releases, or build the program yourself with `go build`   
 3. Create a `.env` file  
 4. Add `GITHUB_TOKEN = TOKEN` to `.env` (replace TOKEN with your token)  
 5. Run the binary in the same download as your `.env` file  
@@ -12,15 +12,17 @@ Go program that utilizes the Github API to backup all repositories for a user. I
 ### CLI Flag Examples  
 These are examples, for full usage info, run `gobackup-github -h`  
 * `gobackup-github` - Use the interactive UI (flags can be added)  
-* `gobackup-github --backup-repos` - Backup your repositories without using the UI  
-* `gobackup-github --backup-stars` - Backup your starred repositories without using the UI  
+* `gobackup-github --backup-repos` - Backup your repositories without using the interactive interface  
+* `gobackup-github --backup-stars` - Backup your starred repositories without using the interactive interface
 * `gobackup-github --backup-stars --backup-repos` - Backup your repositories and your starred repositories  
-* `gobackup-github --list-only` - Record the names and URLs of repositories selected in the UI in a JSON file (skip cloning)    
-* `gobackup-github --backup-repos --skip-list` - Backup your repositories and skip creating a JSON file  
+* `gobackup-github --list-only --create-star-list --create-repo-list -backup-repos` - Record the names and URLs of repositories selected in the UI in a JSON file (skip cloning)  
+    * `-backup-repos` is added to skip using the interactive interface. `backup-stars` can be used too  
+    * To avoid this, a `no-interaction` flag may be added  
+* `gobackup-github -create-star-list` - Use the interactive interface, but also create a list of starred repositories  
 
 ### Why?  
 I wanted a simple way to backup my Github repositories. I also wanted to learn Go and APIs. Thus, I started this project as a way to create my first Go project, use the Github API, and make a utility to backup Github repositories.
 
 ### Roadmap  
-- [ ] Simplify command line flags
+- [X] Simplify command line flags
 - [ ] Allow interactive backups of individual starred repositories
