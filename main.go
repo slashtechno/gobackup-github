@@ -31,7 +31,7 @@ type repoStruct struct {
 }
 
 var currentDirectory, _ = os.Getwd()
-var backupDirectory = filepath.Join(currentDirectory + "/github-backup-" + dateToday)
+var backupDirectory = filepath.Join(currentDirectory, "github-backup-"+dateToday)
 
 var dateToday = time.Now().Format("01-02-2006")
 var allRepos = map[string]any{}
@@ -83,8 +83,8 @@ func main() {
 	if len(savedRepos) != 0 {
 		_, err := os.Stat(backupDirectory)
 		if os.IsNotExist(err) {
-			file, err := os.Create(filepath.Join("github-repository-list-") + dateToday + ".json")
-			log.Println("Creating file at " + filepath.Join("github-repository-list-") + dateToday + ".json") // For debugging
+			file, err := os.Create(filepath.Join(currentDirectory, "github-repository-list-") + dateToday + ".json")
+			log.Println("Creating file at " + filepath.Join(currentDirectory, "github-repository-list-") + dateToday + ".json") // For debugging
 			checkNilErr(err)
 			repoJsonByte, err := json.MarshalIndent(savedRepos, "", "    ")
 			checkNilErr(err)
