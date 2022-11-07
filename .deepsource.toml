@@ -8,5 +8,5 @@ enabled = true
   import_root = "github.com/slashtechno/gobackup-github"
 
 [[transformers]]
-name = "gofmt"
+name = "gofumpt"
 enabled = true
