@@ -35,10 +35,9 @@ var (
 	backupDirectory     = filepath.Join(currentDirectory, "github-backup-"+dateToday)
 )
 
-var (
-	dateToday = time.Now().Format("01-02-2006")
-	allRepos  = map[string]any{}
-)
+var dateToday = time.Now().Format("01-02-2006")
+
+var allRepos  = map[string]any{}
 
 var (
 	repoFlag           = flag.Bool("backup-repos", false, "Set this flag to backup your repositories and SKIP the interactive UI (can be combined with backup-stars)")
