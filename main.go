@@ -30,20 +30,25 @@ type repoStruct struct {
 	} `json:"owner"`
 }
 
-var currentDirectory, _ = os.Getwd()
-var backupDirectory = filepath.Join(currentDirectory, "github-backup-"+dateToday)
+var (
+	currentDirectory, _ = os.Getwd()
+	backupDirectory     = filepath.Join(currentDirectory, "github-backup-"+dateToday)
+)
 
 var dateToday = time.Now().Format("01-02-2006")
+
 var allRepos = map[string]any{}
 
-var repoFlag = flag.Bool("backup-repos", false, "Set this flag to backup your repositories and SKIP the interactive UI (can be combined with backup-stars)")
-var starFlag = flag.Bool("backup-stars", false, "Set this flag to backup your starred repositoriesand SKIP the interactive UI (can be combined with backup-repos)")
-var createStarListFlag = flag.Bool("create-star-list", false, "Set this flag to create a list of starred repositories")
-var createRepoListFlag = flag.Bool("create-repo-list", false, "Set this flag to create a list of your repositories")
-var skipCloneFlag = flag.Bool("skip-clone", false, "Set this flag to skip cloning repositories. Recommended use is when creating records of repositories")
-var noInteractFlag = flag.Bool("skip-interaction", false, "Set this flag to skip the user interface. Recommended use is when creating records of repositories")
-var ranRepoBackup = false
-var ranStarBackup = false
+var (
+	repoFlag           = flag.Bool("backup-repos", false, "Set this flag to backup your repositories and SKIP the interactive UI (can be combined with backup-stars)")
+	starFlag           = flag.Bool("backup-stars", false, "Set this flag to backup your starred repositoriesand SKIP the interactive UI (can be combined with backup-repos)")
+	createStarListFlag = flag.Bool("create-star-list", false, "Set this flag to create a list of starred repositories")
+	createRepoListFlag = flag.Bool("create-repo-list", false, "Set this flag to create a list of your repositories")
+	skipCloneFlag      = flag.Bool("skip-clone", false, "Set this flag to skip cloning repositories. Recommended use is when creating records of repositories")
+	noInteractFlag     = flag.Bool("skip-interaction", false, "Set this flag to skip the user interface. Recommended use is when creating records of repositories")
+	ranRepoBackup      = false
+	ranStarBackup      = false
+)
 
 func main() {
 	flag.Usage = func() {
@@ -64,7 +69,7 @@ func main() {
 	} else {
 		mainMenu()
 	}
-	var savedRepos = make(map[string]any, 2)
+	savedRepos := make(map[string]any, 2)
 	// for k, v := range allRepos {
 	// 	savedRepos[k] = v
 	// }
