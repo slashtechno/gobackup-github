@@ -37,7 +37,7 @@ var (
 
 var dateToday = time.Now().Format("01-02-2006")
 
-var allRepos  = map[string]any{}
+var allRepos = map[string]any{}
 
 var (
 	repoFlag           = flag.Bool("backup-repos", false, "Set this flag to backup your repositories and SKIP the interactive UI (can be combined with backup-stars)")
