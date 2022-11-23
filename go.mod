@@ -6,7 +6,7 @@ require (
 	github.com/TwiN/go-color v1.2.0
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/joho/godotenv v1.4.0
-	github.com/tidwall/gjson v1.14.3
+	github.com/tidwall/gjson v1.14.4
 )
 
 require (
