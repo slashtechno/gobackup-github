@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/TwiN/go-color v1.4.0
 	github.com/go-git/go-git/v5 v5.5.2
-	github.com/joho/godotenv v1.4.0
+	github.com/joho/godotenv v1.5.1
 	github.com/tidwall/gjson v1.14.4
 )
 
