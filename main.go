@@ -35,14 +35,14 @@ var (
 	backupDirectory     = filepath.Join(currentDirectory, "github-backup-"+dateToday)
 )
 
+var backedUp = map[string]any{}
+
 var dateToday = time.Now().Format("01-02-2006")
 
-var allRepos = map[string]any{}
-
 type BackupCmd struct {
-	Targets []string `arg:"positional" help:"What to backup. Options are: repos, stars, gists"`
-	// createList bool     ``arg:"-c,--create-list" help:"Create a list of repositories"`
-	noClone bool `arg:"-n,--no-clone" help:"Don't clone the repositories"`
+	Targets    []string `arg:"positional" help:"What to backup. Options are: repos, stars, gists"`
+	CreateList bool     `arg:"-c,--create-list" help:"Create a list of repositories"`
+	NoClone    bool     `arg:"-n,--no-clone" help:"Don't clone the repositories"`
 }
 
 var args struct {
@@ -74,6 +74,7 @@ func main() {
 	} else {
 		logrus.SetLevel(logrus.InfoLevel)
 	}
+
 	switch {
 	case args.Backup != nil:
 		if len(args.Backup.Targets) == 0 {
@@ -82,11 +83,11 @@ func main() {
 		for _, target := range args.Backup.Targets {
 			switch target {
 			case "repos":
-				backupRepos(!args.Backup.noClone)
+				backedUp["repos"] = backupRepos(!args.Backup.NoClone)
 			case "stars":
-				backupStars(!args.Backup.noClone)
+				backedUp["stars"] = backupStars(!args.Backup.NoClone)
 			case "gists":
-				// backupGists()
+				// backedUp["gists"] =  backupGists()
 			default:
 				logrus.Fatal("Invalid target: " + target)
 			}
@@ -94,7 +95,22 @@ func main() {
 	default:
 		mainMenu()
 	}
-	// Add list creation here
+	// List creation
+	if args.Backup.CreateList {
+		createList(backedUp)
+	}
+}
+
+func createList(repos map[string]any) {
+	logrus.Info("Creating list of repositories")
+	// Write the repos to a JSON file
+	file, err := os.OpenFile(filepath.Join(backupDirectory, "list.json"), os.O_CREATE|os.O_WRONLY, 0644)
+	checkNilErr(err)
+	defer file.Close()
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "    ")
+	err = encoder.Encode(repos)
+	checkNilErr(err)
 }
 
 func backupRepos(clone bool) map[string]any {
@@ -125,7 +141,6 @@ func backupRepos(clone bool) map[string]any {
 			repos[repoSlice[i].Name] = repoSlice[i].HTMLURL
 		}
 	}
-	allRepos["repos"] = repos
 	return repos
 }
 
@@ -157,7 +172,6 @@ func backupStars(clone bool) map[string]any {
 			stars[starSlice[i].Name] = starSlice[i].HTMLURL
 		}
 	}
-	allRepos["stars"] = stars
 	return stars
 }
 
@@ -247,12 +261,12 @@ func backupMenu() {
 	backupSelection = strings.TrimSpace(backupSelection)
 	switch backupSelection {
 	case "1":
-		backupRepos(true)
+		backedUp["repos"] = backupRepos(true)
 	case "2":
-		backupStars(true)
+		backedUp["stars"] = backupStars(true)
 	case "3":
-		backupRepos(true)
-		backupStars(true)
+		backedUp["repos"] = backupRepos(true)
+		backedUp["stars"] = backupStars(true)
 	}
 }
 
