@@ -4,8 +4,10 @@ go 1.19
 
 require (
 	github.com/TwiN/go-color v1.4.0
+	github.com/alexflint/go-arg v1.4.3
 	github.com/go-git/go-git/v5 v5.6.1
 	github.com/joho/godotenv v1.5.1
+	github.com/sirupsen/logrus v1.7.0
 	github.com/tidwall/gjson v1.14.4
 )
 
@@ -13,6 +15,7 @@ require (
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20230217124315-7d5c6f04bbb8 // indirect
 	github.com/acomagu/bufpipe v1.0.4 // indirect
+	github.com/alexflint/go-scalar v1.1.0 // indirect
 	github.com/cloudflare/circl v1.1.0 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/go-git/gcfg v1.5.0 // indirect
