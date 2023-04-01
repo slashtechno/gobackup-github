@@ -9,7 +9,7 @@ Go program that utilizes the Github API to backup all repositories for a user. I
 4. Add `GITHUB_TOKEN = TOKEN` to `.env` (replace TOKEN with your token)  
 5. Run the binary in the same folder as your `.env` file  
 
-### CLI Flag Examples  
+### CLI Examples  
 These are examples, for full usage info, run `gobackup-github --help`  
 * `gobackup-github` - Use the interactive UI 
 * `gobackup-github backup repos` - Backup your repositories 
@@ -18,8 +18,4 @@ These are examples, for full usage info, run `gobackup-github --help`
 * `gobackup-github backup --create-list --no-clone repos stars` - Record the names and URLs of starred and owned repositories, without cloning them  
 
 ### Why?  
-I wanted a simple way to backup my Github repositories. I also wanted to learn Go and APIs. Thus, I started this project as a way to create my first Go project, use the Github API, and make a utility to backup Github repositories.
-
-### Roadmap  
-- [X] Simplify command line flags
-- [ ] Allow interactive backups of individual starred repositories
+I wanted a simple way to backup my Github repositories. I also wanted to learn Go and APIs. Thus, I started this project as a way to create my first Go project, use the Github API, and make a utility to backup Github repositories.  
