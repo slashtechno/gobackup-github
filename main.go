@@ -3,10 +3,8 @@ package main
 import (
 	"bufio"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io"
-	"log"
 	"math"
 	"net/http"
 	"os"
@@ -15,10 +13,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TwiN/go-color"
+	"github.com/alexflint/go-arg"
 	"github.com/go-git/go-git/v5"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/joho/godotenv"
+	"github.com/sirupsen/logrus"
 	"github.com/tidwall/gjson"
 )
 
@@ -30,162 +29,155 @@ type repoStruct struct {
 	} `json:"owner"`
 }
 
-var (
-	currentDirectory, _ = os.Getwd()
-	backupDirectory     = filepath.Join(currentDirectory, "github-backup-"+dateToday)
-)
+var backedUp = map[string]map[string]string{}
 
 var dateToday = time.Now().Format("01-02-2006")
 
-var allRepos = map[string]any{}
-
 var (
-	repoFlag           = flag.Bool("backup-repos", false, "Set this flag to backup your repositories and SKIP the interactive UI (can be combined with backup-stars)")
-	starFlag           = flag.Bool("backup-stars", false, "Set this flag to backup your starred repositoriesand SKIP the interactive UI (can be combined with backup-repos)")
-	createStarListFlag = flag.Bool("create-star-list", false, "Set this flag to create a list of starred repositories")
-	createRepoListFlag = flag.Bool("create-repo-list", false, "Set this flag to create a list of your repositories")
-	skipCloneFlag      = flag.Bool("skip-clone", false, "Set this flag to skip cloning repositories. Recommended use is when creating records of repositories")
-	noInteractFlag     = flag.Bool("skip-interaction", false, "Set this flag to skip the user interface. Recommended use is when creating records of repositories")
-	ranRepoBackup      = false
-	ranStarBackup      = false
+	currentDirectory, _ = os.Getwd()
+	backupDirectory     = filepath.Join(currentDirectory, "github-backup-from-"+dateToday)
 )
 
+type BackupCmd struct {
+	Targets    []string `arg:"positional" help:"What to backup. Options are: repos; stars"`
+	CreateList bool     `arg:"-c,--create-list" help:"Create a list of repositories"`
+	NoClone    bool     `arg:"-n,--no-clone" help:"Don't clone the repositories"`
+	// Add backup dir
+}
+
+var args struct {
+	Backup *BackupCmd `arg:"subcommand:backup" help:"Backup your GitHub data"`
+	// Misc flags
+	LogLevel string `arg:"--log-level, env:LOG_LEVEL" help:"\"debug\", \"info\", \"warning\", \"error\", or \"fatal\"" default:"info"`
+	LogColor bool   `arg:"--log-color, env:LOG_COLOR" help:"Force colored logs" default:"false"`
+}
+
 func main() {
-	flag.Usage = func() {
-		fmt.Fprintln(flag.CommandLine.Output(), color.InBold("Usage:"))
-		flag.PrintDefaults()
-	}
+	logrus.Info("Today is " + dateToday)
+	// Command line stuff
 	godotenv.Load()
-	flag.Parse()
-	if *repoFlag && *starFlag {
-		backupRepos(!*skipCloneFlag)
-		backupStars(!*skipCloneFlag)
-	} else if *repoFlag {
-		backupRepos(!*skipCloneFlag)
-	} else if *starFlag {
-		backupStars(!*skipCloneFlag)
-	} else if *noInteractFlag {
-		log.Println("\"skip-interaction\" was set. Skipping UI")
+	arg.MustParse(&args)
+
+	logrus.SetOutput(os.Stdout)
+	logrus.SetFormatter(&logrus.TextFormatter{PadLevelText: true, DisableQuote: true, ForceColors: args.LogColor, DisableColors: !args.LogColor})
+	if args.LogLevel == "debug" {
+		logrus.SetLevel(logrus.DebugLevel)
+		// Enable line numbers in debug logs - Doesn't help too much since a fatal error still needs to be debugged
+		logrus.SetReportCaller(true)
+	} else if args.LogLevel == "info" {
+		logrus.SetLevel(logrus.InfoLevel)
+	} else if args.LogLevel == "warning" {
+		logrus.SetLevel(logrus.WarnLevel)
+	} else if args.LogLevel == "error" {
+		logrus.SetLevel(logrus.ErrorLevel)
+	} else if args.LogLevel == "fatal" {
+		logrus.SetLevel(logrus.FatalLevel)
 	} else {
+		logrus.SetLevel(logrus.InfoLevel)
+	}
+
+	switch {
+	case args.Backup != nil:
+		if len(args.Backup.Targets) == 0 {
+			logrus.Fatal("No targets specified")
+		}
+		backedUp = backupRepos(args.Backup.Targets, !args.Backup.NoClone)
+	default:
 		mainMenu()
 	}
-	savedRepos := make(map[string]any, 2)
-	// for k, v := range allRepos {
-	// 	savedRepos[k] = v
-	// }
-	if *createRepoListFlag {
-		if !ranRepoBackup {
-			backupRepos(false)
-		}
-		savedRepos["repos"] = allRepos["repos"]
-	}
-	if *createStarListFlag {
-		if !ranStarBackup {
-			backupStars(false)
-		}
-		savedRepos["stars"] = allRepos["stars"]
-	}
-	if len(savedRepos) != 0 {
-		_, err := os.Stat(backupDirectory)
-		if os.IsNotExist(err) {
-			file, err := os.Create(filepath.Join(currentDirectory, "github-repository-list-") + dateToday + ".json")
-			log.Println("Creating file at " + filepath.Join(currentDirectory, "github-repository-list-") + dateToday + ".json") // For debugging
-			checkNilErr(err)
-			repoJsonByte, err := json.MarshalIndent(savedRepos, "", "    ")
-			checkNilErr(err)
-			file.Write(repoJsonByte)
-		} else {
-			file, err := os.Create(filepath.Join(backupDirectory, "github-repository-list.json"))
-			log.Println("Creating file at " + filepath.Join(backupDirectory, "github-repository-list.json")) // For debugging
-			checkNilErr(err)
-			repoJsonByte, err := json.MarshalIndent(savedRepos, "", "    ")
-			checkNilErr(err)
-			file.Write(repoJsonByte)
-		}
-	} else {
-		log.Println("No repositories were recorded")
+	// List creation
+	if args.Backup.CreateList {
+		createList(backedUp)
 	}
 }
 
-func backupRepos(clone bool) map[string]any {
-	ranRepoBackup = true
-	user := gjson.Get(responseContent(ghRequest("https://api.github.com/user").Body), "login")
-	log.Println("User: " + user.String())
-	var repoSlice []repoStruct
-	repos := map[string]any{}
-	neededPages := calculateNeededPages("userRepos")
-	log.Println("Getting list of repositories")
-	for i := 1; i <= neededPages; i++ {
-		repoJSON := responseContent(ghRequest("https://api.github.com/user/repos?per_page=100&page=" + strconv.Itoa(i)).Body)
-		err := json.Unmarshal([]byte(repoJSON), &repoSlice)
+func createList(repos map[string]map[string]string) {
+	logrus.Info("Creating list of repositories")
+	// Write the repos to a JSON file
+	if _, err := os.Stat(backupDirectory); !os.IsExist(err) {
+		// Maybe just make a file instead of a directory, for now, a directory is fine
+		err = os.MkdirAll(backupDirectory, 0600)
 		checkNilErr(err)
-		for i := 0; i < len(repoSlice); i++ {
-			owner := repoSlice[i].Owner.Login
-			if clone {
-				cloneDirectory := filepath.Join(backupDirectory, "your-repos", owner+"_"+repoSlice[i].Name)
-				log.Printf("Cloning %v (iteration %v) to %v\n", repoSlice[i].Name, i+1, cloneDirectory)
-				_, err = git.PlainClone(cloneDirectory, false, &git.CloneOptions{
-					URL: repoSlice[i].HTMLURL,
-					Auth: &githttp.BasicAuth{
-						Username: user.String(), // anything except an empty string
-						Password: loadToken(),
-					},
-				})
-				checkNilErr(err)
+	}
+	file, err := os.OpenFile(filepath.Join(backupDirectory, "list.json"), os.O_CREATE|os.O_WRONLY, 0600)
+	checkNilErr(err)
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "    ")
+	err = encoder.Encode(repos)
+	checkNilErr(err)
+	err = file.Close()
+	checkNilErr(err)
+}
+
+func backupRepos(repoTypes []string, clone bool) map[string]map[string]string {
+	user := gjson.Get(responseContent(ghRequest("https://api.github.com/user").Body), "login")
+
+	// Repos is a map of repo names. This is just to store repos in {repoTypes: [repoName: repoURl, repoName: repoURL]} format. So a map of maps
+	// I Noticed map[string]any can't be used because it can't be accessed using a[b][c] = d. I also might just be doing something wrong
+	repos := map[string]map[string]string{}
+
+	for _, repoType := range repoTypes {
+		// Declaring variables so that they can be used in the switch statement and outside of it
+		var (
+			// repoSlice is a slice of repoStructs
+			repoSlice   []repoStruct
+			url         string
+			neededPages int
+		)
+
+		// Create a map for the repo type ( to prevent a panic: assignment to entry in nil map)
+		repos[repoType] = map[string]string{}
+
+		switch repoType {
+		case "repos":
+			url = "https://api.github.com/user/repos?per_page=100&page="
+			neededPages = calculateNeededPages("repos")
+			logrus.Info("Getting list of repositories for " + user.String())
+		case "stars":
+			url = "https://api.github.com/user/starred?per_page=100&page="
+			neededPages = calculateNeededPages("stars")
+			logrus.Info("Getting list of starred repositories for " + user.String())
+		default:
+			logrus.Fatal("Invalid repo type: " + repoType)
+		}
+		for i := 1; i <= neededPages; i++ {
+
+			repoJSON := responseContent(ghRequest(url + strconv.Itoa(i)).Body)
+			err := json.Unmarshal([]byte(repoJSON), &repoSlice)
+			checkNilErr(err)
+			for i := 0; i < len(repoSlice); i++ {
+				owner := repoSlice[i].Owner.Login
+				if clone {
+					cloneDirectory := filepath.Join(backupDirectory, repoType, owner, repoSlice[i].Name)
+					logrus.Infof("Cloning %v (iteration %v) to %v\n", repoSlice[i].Name, i+1, cloneDirectory)
+					_, err = git.PlainClone(cloneDirectory, false, &git.CloneOptions{
+						URL: repoSlice[i].HTMLURL,
+						Auth: &githttp.BasicAuth{
+							Username: user.String(), // anything except an empty string
+							Password: loadToken(),
+						},
+					})
+					checkNilErr(err)
+				}
+				repos[repoType][repoSlice[i].Name] = repoSlice[i].HTMLURL
 			}
-			repos[repoSlice[i].Name] = repoSlice[i].HTMLURL
 		}
 	}
-	allRepos["repos"] = repos
 	return repos
 }
 
-func backupStars(clone bool) map[string]any {
-	ranStarBackup = true
-	user := gjson.Get(responseContent(ghRequest("https://api.github.com/user").Body), "login")
-	log.Println("User: " + user.String())
-	var starSlice []repoStruct
-	stars := map[string]any{}
-	neededPages := calculateNeededPages("userStars")
-	log.Println("Getting list of starred repositories")
-	for i := 1; i <= neededPages; i++ {
-		repoJSON := responseContent(ghRequest("https://api.github.com/user/starred?per_page=100&page=" + strconv.Itoa(i)).Body)
-		err := json.Unmarshal([]byte(repoJSON), &starSlice)
-		checkNilErr(err)
-		for i := 0; i < len(starSlice); i++ {
-			owner := starSlice[i].Owner.Login
-			if clone {
-				cloneDirectory := filepath.Join(backupDirectory, "your-stars", owner+"_"+starSlice[i].Name)
-				log.Printf("Cloning %v (iteration %v) to %v\n", starSlice[i].Name, i, cloneDirectory)
-				_, err = git.PlainClone(cloneDirectory, false, &git.CloneOptions{
-					URL: starSlice[i].HTMLURL,
-					Auth: &githttp.BasicAuth{
-						Username: user.String(), // anything except an empty string
-						Password: loadToken(),
-					},
-				})
-				checkNilErr(err)
-			}
-			stars[starSlice[i].Name] = starSlice[i].HTMLURL
-		}
-	}
-	allRepos["stars"] = stars
-	return stars
-}
-
 func calculateNeededPages(whichRepos string) int {
-	if whichRepos == "userRepos" {
+	if whichRepos == "repos" {
 		response := ghRequest("https://api.github.com/user")
 		json := responseContent(response.Body)
 		publicRepos := gjson.Get(json, "public_repos")
 		privateRepos := gjson.Get(json, "total_private_repos")
 		totalRepos := publicRepos.Num + privateRepos.Num
-		log.Println("Total repositories: " + strconv.Itoa(int(totalRepos)))
+		logrus.Info("Total repositories: " + strconv.Itoa(int(totalRepos)))
 		neededPages := math.Ceil(totalRepos / 100)
-		// fmt.Println(neededPages)
-		log.Println("Total pages needed:" + strconv.Itoa(int(neededPages)))
+		logrus.Info("Total pages needed:" + strconv.Itoa(int(neededPages)))
 		return int(neededPages)
-	} else if whichRepos == "userStars" {
+	} else if whichRepos == "stars" {
 		var starSlice []repoStruct
 		pageNumber := 1
 		perPage := 100
@@ -212,7 +204,7 @@ func responseContent(responseBody io.ReadCloser) string {
 }
 
 func ghRequest(url string) *http.Response {
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequest(http.MethodGet, url, http.NoBody)
 	checkNilErr(err)
 	req.Header.Set("Authorization", "token "+loadToken())
 	// req.Header.Set("Accept", "application/vnd.github.v3+json")
@@ -220,12 +212,11 @@ func ghRequest(url string) *http.Response {
 	response, err := http.DefaultClient.Do(req)
 	checkNilErr(err)
 	if response.StatusCode != 200 {
-		log.Println("Something went wrong, status code is not \"200 OK\"")
-		log.Println("Response status code: " + response.Status)
+		logrus.Fatal("Something went wrong, status code is not \"200 OK\"")
+		logrus.Fatal("Response status code: " + response.Status)
 		if response.StatusCode == 401 {
-			log.Println("You may have an incorrect Github personal token")
+			logrus.Fatal("Unauthorized, check your token")
 		}
-		os.Exit(1)
 
 	}
 	return response
@@ -252,7 +243,6 @@ func mainMenu() {
 }
 
 func backupMenu() {
-	flag.Parse()
 	fmt.Println(`What should this program backup?
 1) Your public and private repositories
 2) Your starred repositories
@@ -262,18 +252,18 @@ func backupMenu() {
 	backupSelection = strings.TrimSpace(backupSelection)
 	switch backupSelection {
 	case "1":
-		backupRepos(!*skipCloneFlag)
+		backupRepos([]string{"repos"}, true)
 	case "2":
-		backupStars(!*skipCloneFlag)
+		backupRepos([]string{"stars"}, true)
 	case "3":
-		backupRepos(!*skipCloneFlag)
-		backupStars(!*skipCloneFlag)
+		backupRepos([]string{"repos", "stars"}, true)
+	default:
+		logrus.Fatalln("Invalid selection")
 	}
 }
 
 func checkNilErr(err any) {
 	if err != nil {
-		// log.Fatalln("Error:\n%v\n", err)
-		log.Fatalln(err)
+		logrus.Fatal(err)
 	}
 }
