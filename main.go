@@ -203,7 +203,7 @@ func responseContent(responseBody io.ReadCloser) string {
 }
 
 func ghRequest(url string) *http.Response {
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequest(http.MethodGet, url, http.NoBody)
 	checkNilErr(err)
 	req.Header.Set("Authorization", "token "+loadToken())
 	// req.Header.Set("Accept", "application/vnd.github.v3+json")
