@@ -39,7 +39,7 @@ var (
 )
 
 type BackupCmd struct {
-	Targets    []string `arg:"positional" help:"What to backup. Options are: repos, stars"`
+	Targets    []string `arg:"positional" help:"What to backup. Options are: repos; stars"`
 	CreateList bool     `arg:"-c,--create-list" help:"Create a list of repositories"`
 	NoClone    bool     `arg:"-n,--no-clone" help:"Don't clone the repositories"`
 	// Add backup dir
@@ -96,7 +96,7 @@ func createList(repos map[string]map[string]string) {
 	// Write the repos to a JSON file
 	if _, err := os.Stat(backupDirectory); !os.IsExist(err) {
 		// Maybe just make a file instead of a directory, for now, a directory is fine
-		err = os.MkdirAll(backupDirectory, 0644)
+		err = os.MkdirAll(backupDirectory, 0600)
 		checkNilErr(err)
 	}
 	file, err := os.OpenFile(filepath.Join(backupDirectory, "list.json"), os.O_CREATE|os.O_WRONLY, 0644)
