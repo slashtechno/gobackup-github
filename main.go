@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"math"
 	"net/http"
 	"os"
@@ -212,8 +211,8 @@ func ghRequest(url string) *http.Response {
 	response, err := http.DefaultClient.Do(req)
 	checkNilErr(err)
 	if response.StatusCode != 200 {
-		log.Println("Something went wrong, status code is not \"200 OK\"")
-		log.Println("Response status code: " + response.Status)
+		logrus.Fatal("Something went wrong, status code is not \"200 OK\"")
+		logrus.Fatal("Response status code: " + response.Status)
 		if response.StatusCode == 401 {
 			logrus.Fatal("Unauthorized, check your token")
 		}
@@ -264,7 +263,6 @@ func backupMenu() {
 
 func checkNilErr(err any) {
 	if err != nil {
-		// log.Fatalln("Error:\n%v\n", err)
 		logrus.Fatal(err)
 	}
 }
