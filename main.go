@@ -99,7 +99,7 @@ func createList(repos map[string]map[string]string) {
 		err = os.MkdirAll(backupDirectory, 0600)
 		checkNilErr(err)
 	}
-	file, err := os.OpenFile(filepath.Join(backupDirectory, "list.json"), os.O_CREATE|os.O_WRONLY, 600)
+	file, err := os.OpenFile(filepath.Join(backupDirectory, "list.json"), os.O_CREATE|os.O_WRONLY, 0600)
 	checkNilErr(err)
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "    ")
