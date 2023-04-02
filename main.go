@@ -39,7 +39,7 @@ var (
 )
 
 type BackupCmd struct {
-	Targets    []string `arg:"positional" help:"What to backup. Options are: repos; stars"`
+	Targets    []string `arg:"positional" help:"What to backup. Options are: repos; stars; gists"`
 	CreateList bool     `arg:"-c,--create-list" help:"Create a list of repositories"`
 	NoClone    bool     `arg:"-n,--no-clone" help:"Don't clone the repositories"`
 	// Add backup dir
@@ -47,6 +47,10 @@ type BackupCmd struct {
 
 var args struct {
 	Backup *BackupCmd `arg:"subcommand:backup" help:"Backup your GitHub data"`
+
+	// Environment variables
+	Token string `arg:"env:GITHUB_TOKEN" help:"GitHub token"`
+
 	// Misc flags
 	LogLevel string `arg:"--log-level, env:LOG_LEVEL" help:"\"debug\", \"info\", \"warning\", \"error\", or \"fatal\"" default:"info"`
 	LogColor bool   `arg:"--log-color, env:LOG_COLOR" help:"Force colored logs" default:"false"`
@@ -81,7 +85,7 @@ func main() {
 		if len(args.Backup.Targets) == 0 {
 			logrus.Fatal("No targets specified")
 		}
-		backedUp = backupRepos(args.Backup.Targets, !args.Backup.NoClone)
+		backedUp = backupRepos(args.Backup.Targets, !args.Backup.NoClone, loadToken())
 	default:
 		mainMenu()
 	}
@@ -109,8 +113,8 @@ func createList(repos map[string]map[string]string) {
 	checkNilErr(err)
 }
 
-func backupRepos(repoTypes []string, clone bool) map[string]map[string]string {
-	user := gjson.Get(responseContent(ghRequest("https://api.github.com/user").Body), "login")
+func backupRepos(repoTypes []string, clone bool, token string) map[string]map[string]string {
+	user := gjson.Get(responseContent(ghRequest("https://api.github.com/user", loadToken()).Body), "login")
 
 	// Repos is a map of repo names. This is just to store repos in {repoTypes: [repoName: repoURl, repoName: repoURL]} format. So a map of maps
 	// I Noticed map[string]any can't be used because it can't be accessed using a[b][c] = d. I also might just be doing something wrong
@@ -142,7 +146,7 @@ func backupRepos(repoTypes []string, clone bool) map[string]map[string]string {
 		}
 		for i := 1; i <= neededPages; i++ {
 
-			repoJSON := responseContent(ghRequest(url + strconv.Itoa(i)).Body)
+			repoJSON := responseContent(ghRequest(url+strconv.Itoa(i), token).Body)
 			err := json.Unmarshal([]byte(repoJSON), &repoSlice)
 			checkNilErr(err)
 			for i := 0; i < len(repoSlice); i++ {
@@ -154,7 +158,7 @@ func backupRepos(repoTypes []string, clone bool) map[string]map[string]string {
 						URL: repoSlice[i].HTMLURL,
 						Auth: &githttp.BasicAuth{
 							Username: user.String(), // anything except an empty string
-							Password: loadToken(),
+							Password: token,
 						},
 					})
 					checkNilErr(err)
@@ -168,7 +172,7 @@ func backupRepos(repoTypes []string, clone bool) map[string]map[string]string {
 
 func calculateNeededPages(whichRepos string) int {
 	if whichRepos == "repos" {
-		response := ghRequest("https://api.github.com/user")
+		response := ghRequest("https://api.github.com/user", loadToken())
 		json := responseContent(response.Body)
 		publicRepos := gjson.Get(json, "public_repos")
 		privateRepos := gjson.Get(json, "total_private_repos")
@@ -181,12 +185,12 @@ func calculateNeededPages(whichRepos string) int {
 		var starSlice []repoStruct
 		pageNumber := 1
 		perPage := 100
-		starJSON := responseContent(ghRequest("https://api.github.com/user/starred?page=1&per_page=" + strconv.Itoa(perPage)).Body)
+		starJSON := responseContent(ghRequest("https://api.github.com/user/starred?page=1&per_page="+strconv.Itoa(perPage), loadToken()).Body)
 		err := json.Unmarshal([]byte(starJSON), &starSlice)
 		checkNilErr(err)
 		for len(starSlice) != 0 { // if len(starSlice) == perPage {
 			pageNumber++
-			starJSON := responseContent(ghRequest("https://api.github.com/user/starred?page=" + strconv.Itoa(pageNumber) + "&per_page=" + strconv.Itoa(perPage)).Body)
+			starJSON := responseContent(ghRequest("https://api.github.com/user/starred?page="+strconv.Itoa(pageNumber)+"&per_page="+strconv.Itoa(perPage), loadToken()).Body)
 			err := json.Unmarshal([]byte(starJSON), &starSlice)
 			checkNilErr(err)
 
@@ -203,10 +207,10 @@ func responseContent(responseBody io.ReadCloser) string {
 	return string(bytes)
 }
 
-func ghRequest(url string) *http.Response {
+func ghRequest(url string, token string) *http.Response {
 	req, err := http.NewRequest(http.MethodGet, url, http.NoBody)
 	checkNilErr(err)
-	req.Header.Set("Authorization", "token "+loadToken())
+	req.Header.Set("Authorization", "token "+token)
 	// req.Header.Set("Accept", "application/vnd.github.v3+json")
 	req.Header.Set("Accept", "testing-github-api")
 	response, err := http.DefaultClient.Do(req)
@@ -223,7 +227,7 @@ func ghRequest(url string) *http.Response {
 }
 
 func loadToken() string {
-	return os.Getenv("GITHUB_TOKEN")
+	return args.Token
 }
 
 // Menus
@@ -252,11 +256,11 @@ func backupMenu() {
 	backupSelection = strings.TrimSpace(backupSelection)
 	switch backupSelection {
 	case "1":
-		backupRepos([]string{"repos"}, true)
+		backupRepos([]string{"repos"}, true, loadToken())
 	case "2":
-		backupRepos([]string{"stars"}, true)
+		backupRepos([]string{"stars"}, true, loadToken())
 	case "3":
-		backupRepos([]string{"repos", "stars"}, true)
+		backupRepos([]string{"repos", "stars"}, true, loadToken())
 	default:
 		logrus.Fatalln("Invalid selection")
 	}
