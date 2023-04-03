@@ -28,6 +28,16 @@ type repoStruct struct {
 		Login string `json:"login"`
 	} `json:"owner"`
 }
+type gistStruct []struct {
+	ID         string `json:"id"`
+	GitPullURL string `json:"git_pull_url"`
+
+	Public      bool   `json:"public"`
+	Description string `json:"description"`
+	Owner       struct {
+		Login string `json:"login"`
+	} `json:"owner"`
+}
 
 var backedUp = map[string]map[string]string{}
 
@@ -132,17 +142,18 @@ func backupRepos(repoTypes []string, clone bool, token string) map[string]map[st
 		// Create a map for the repo type ( to prevent a panic: assignment to entry in nil map)
 		repos[repoType] = map[string]string{}
 
-		switch repoType {
-		case "repos":
+		// Single line if statement to set the url and neededPages variables
+		if repoType == "repos" {
 			url = "https://api.github.com/user/repos?per_page=100&page="
 			neededPages = calculateNeededPages("repos")
 			logrus.Info("Getting list of repositories for " + user.String())
-		case "stars":
+		} else if repoType == "stars" {
 			url = "https://api.github.com/user/starred?per_page=100&page="
 			neededPages = calculateNeededPages("stars")
 			logrus.Info("Getting list of starred repositories for " + user.String())
-		default:
-			logrus.Fatal("Invalid repo type: " + repoType)
+		} else if repoType == "gists" {
+			url = "https://api.github.com/gists?per_page=100&page="
+			neededPages = calculateNeededPages("gists")
 		}
 		for i := 1; i <= neededPages; i++ {
 
@@ -171,6 +182,7 @@ func backupRepos(repoTypes []string, clone bool, token string) map[string]map[st
 }
 
 func calculateNeededPages(whichRepos string) int {
+	perPage := 10
 	if whichRepos == "repos" {
 		response := ghRequest("https://api.github.com/user", loadToken())
 		json := responseContent(response.Body)
@@ -178,27 +190,42 @@ func calculateNeededPages(whichRepos string) int {
 		privateRepos := gjson.Get(json, "total_private_repos")
 		totalRepos := publicRepos.Num + privateRepos.Num
 		logrus.Info("Total repositories: " + strconv.Itoa(int(totalRepos)))
-		neededPages := math.Ceil(totalRepos / 100)
+		neededPages := math.Ceil(totalRepos / float64(perPage))
 		logrus.Info("Total pages needed:" + strconv.Itoa(int(neededPages)))
 		return int(neededPages)
 	} else if whichRepos == "stars" {
+		total := 0
 		var starSlice []repoStruct
-		pageNumber := 1
-		perPage := 100
-		starJSON := responseContent(ghRequest("https://api.github.com/user/starred?page=1&per_page="+strconv.Itoa(perPage), loadToken()).Body)
-		err := json.Unmarshal([]byte(starJSON), &starSlice)
-		checkNilErr(err)
-		for len(starSlice) != 0 { // if len(starSlice) == perPage {
+		var pageNumber int
+		// If the length of the slice is 0, the request prior to the one just made was the last page
+		for len(starSlice) == perPage || pageNumber == 0 {
 			pageNumber++
 			starJSON := responseContent(ghRequest("https://api.github.com/user/starred?page="+strconv.Itoa(pageNumber)+"&per_page="+strconv.Itoa(perPage), loadToken()).Body)
 			err := json.Unmarshal([]byte(starJSON), &starSlice)
 			checkNilErr(err)
-
+			total += len(starSlice)
 		}
+		logrus.Info("Total starred repositories: " + strconv.Itoa(total))
+		logrus.Info("Total pages needed:" + strconv.Itoa(pageNumber))
 		return pageNumber
-	} else {
-		return 0
+	} else if whichRepos == "gists" {
+		total := 0
+		var gistSlice []gistStruct
+		var pageNumber int
+		for len(gistSlice) == perPage || pageNumber == 0 {
+			pageNumber++
+			gistJSON := responseContent(ghRequest("https://api.github.com/gists?page="+strconv.Itoa(pageNumber)+"&per_page="+strconv.Itoa(perPage), loadToken()).Body)
+			err := json.Unmarshal([]byte(gistJSON), &gistSlice)
+			checkNilErr(err)
+			total += len(gistSlice)
+		}
+		logrus.Info("Total gists: " + strconv.Itoa(total))
+		logrus.Info("Total pages needed: " + strconv.Itoa(pageNumber))
+		return pageNumber
 	}
+	// This functions as an else statement since the function will return before this point if the argument is valid.
+	logrus.Fatal("Something went wrong, the function calculateNeededPages() was called with an invalid argument.")
+	return 0
 }
 
 func responseContent(responseBody io.ReadCloser) string {
