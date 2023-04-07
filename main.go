@@ -22,13 +22,14 @@ import (
 )
 
 type repoStruct struct {
-	HTMLURL string `json:"html_url"`
-	Name    string `json:"name"`
-	Owner   struct {
+	HTMLURL     string `json:"html_url"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Owner       struct {
 		Login string `json:"login"`
 	} `json:"owner"`
 }
-type gistStruct []struct {
+type gistStruct struct {
 	ID         string `json:"id"`
 	GitPullURL string `json:"git_pull_url"`
 
@@ -39,7 +40,7 @@ type gistStruct []struct {
 	} `json:"owner"`
 }
 
-var backedUp = map[string]map[string]string{}
+var backedUp = map[string]map[string]map[string]string{}
 
 var dateToday = time.Now().Format("01-02-2006")
 
@@ -105,7 +106,7 @@ func main() {
 	}
 }
 
-func createList(repos map[string]map[string]string) {
+func createList(repos map[string]map[string]map[string]string) {
 	logrus.Info("Creating list of repositories")
 	// Write the repos to a JSON file
 	if _, err := os.Stat(backupDirectory); !os.IsExist(err) {
@@ -123,26 +124,25 @@ func createList(repos map[string]map[string]string) {
 	checkNilErr(err)
 }
 
-func backupRepos(repoTypes []string, clone bool, token string) map[string]map[string]string {
+func backupRepos(repoTypes []string, clone bool, token string) map[string]map[string]map[string]string {
 	user := gjson.Get(responseContent(ghRequest("https://api.github.com/user", loadToken()).Body), "login")
 
-	// Repos is a map of repo names. This is just to store repos in {repoTypes: [repoName: repoURl, repoName: repoURL]} format. So a map of maps
-	// I Noticed map[string]any can't be used because it can't be accessed using a[b][c] = d. I also might just be doing something wrong
-	repos := map[string]map[string]string{}
+	// Repos is a map of repo names. This is just to store repos in {repoTypes: [<id or full name>: {"description": repoDescription, "url": <html_url or git_pull_url>}, <id or full name>...]} format. So a map of maps
+	repos := map[string]map[string]map[string]string{}
 
 	for _, repoType := range repoTypes {
 		// Declaring variables so that they can be used in the switch statement and outside of it
 		var (
 			// repoSlice is a slice of repoStructs
 			repoSlice   []repoStruct
+			gistSlice   []gistStruct
 			url         string
 			neededPages int
 		)
 
 		// Create a map for the repo type ( to prevent a panic: assignment to entry in nil map)
-		repos[repoType] = map[string]string{}
+		repos[repoType] = map[string]map[string]string{}
 
-		// Single line if statement to set the url and neededPages variables
 		if repoType == "repos" {
 			url = "https://api.github.com/user/repos?per_page=100&page="
 			neededPages = calculateNeededPages("repos")
@@ -156,25 +156,55 @@ func backupRepos(repoTypes []string, clone bool, token string) map[string]map[st
 			neededPages = calculateNeededPages("gists")
 		}
 		for i := 1; i <= neededPages; i++ {
-
-			repoJSON := responseContent(ghRequest(url+strconv.Itoa(i), token).Body)
-			err := json.Unmarshal([]byte(repoJSON), &repoSlice)
-			checkNilErr(err)
-			for i := 0; i < len(repoSlice); i++ {
-				owner := repoSlice[i].Owner.Login
-				if clone {
-					cloneDirectory := filepath.Join(backupDirectory, repoType, owner, repoSlice[i].Name)
-					logrus.Infof("Cloning %v (iteration %v) to %v\n", repoSlice[i].Name, i+1, cloneDirectory)
-					_, err = git.PlainClone(cloneDirectory, false, &git.CloneOptions{
-						URL: repoSlice[i].HTMLURL,
-						Auth: &githttp.BasicAuth{
-							Username: user.String(), // anything except an empty string
-							Password: token,
-						},
-					})
-					checkNilErr(err)
+			if repoType == "gists" {
+				gistJSON := responseContent(ghRequest(url+strconv.Itoa(i), token).Body)
+				err := json.Unmarshal([]byte(gistJSON), &gistSlice)
+				checkNilErr(err)
+				for i := 0; i < len(gistSlice); i++ {
+					owner := gistSlice[i].Owner.Login
+					if clone {
+						cloneDirectory := filepath.Join(backupDirectory, repoType, owner, gistSlice[i].ID)
+						logrus.Infof("Cloning %v (iteration %v) to %v\n", gistSlice[i].ID, i+1, cloneDirectory)
+						_, err = git.PlainClone(cloneDirectory, false, &git.CloneOptions{
+							URL: gistSlice[i].GitPullURL,
+							Auth: &githttp.BasicAuth{
+								Username: user.String(), // anything except an empty string
+								Password: token,
+							},
+						})
+						checkNilErr(err)
+					}
+					// Set the description and url of the gist
+					repos[repoType][gistSlice[i].ID] = map[string]string{}
+					// There is no title for gists, so just use the ID and don't set the name
+					repos[repoType][gistSlice[i].ID]["description"] = gistSlice[i].Description
+					repos[repoType][gistSlice[i].ID]["url"] = gistSlice[i].GitPullURL
 				}
-				repos[repoType][repoSlice[i].Name] = repoSlice[i].HTMLURL
+			} else if repoType == "repos" || repoType == "stars" {
+				repoJSON := responseContent(ghRequest(url+strconv.Itoa(i), token).Body)
+				err := json.Unmarshal([]byte(repoJSON), &repoSlice)
+				checkNilErr(err)
+				for i := 0; i < len(repoSlice); i++ {
+					owner := repoSlice[i].Owner.Login
+					if clone {
+						cloneDirectory := filepath.Join(backupDirectory, repoType, owner, repoSlice[i].Name)
+						logrus.Infof("Cloning %v (iteration %v) to %v\n", repoSlice[i].Name, i+1, cloneDirectory)
+						_, err = git.PlainClone(cloneDirectory, false, &git.CloneOptions{
+							URL: repoSlice[i].HTMLURL,
+							Auth: &githttp.BasicAuth{
+								Username: user.String(), // anything except an empty string
+								Password: token,
+							},
+						})
+						checkNilErr(err)
+					}
+					// Set the description and url of the repo
+					repos[repoType][repoSlice[i].Name] = map[string]string{}
+					// Perhaps use <user uuid>/<repo uuid> instead of <user>/<repo>?
+					repos[repoType][repoSlice[i].Name]["name"] = repoSlice[i].Name
+					repos[repoType][repoSlice[i].Name]["description"] = repoSlice[i].Description
+					repos[repoType][repoSlice[i].Name]["url"] = repoSlice[i].HTMLURL
+				}
 			}
 		}
 	}
