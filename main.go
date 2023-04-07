@@ -264,7 +264,7 @@ func responseContent(responseBody io.ReadCloser) string {
 	return string(bytes)
 }
 
-func ghRequest(url string, token string) *http.Response {
+func ghRequest(url, token string) *http.Response{
 	req, err := http.NewRequest(http.MethodGet, url, http.NoBody)
 	checkNilErr(err)
 	req.Header.Set("Authorization", "token "+token)
