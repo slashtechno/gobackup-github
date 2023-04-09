@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -68,7 +69,7 @@ var args struct {
 }
 
 func main() {
-	logrus.Info("Today is " + dateToday)
+	fmt.Println("Today is " + dateToday)
 	// Command line stuff
 	godotenv.Load()
 	arg.MustParse(&args)
@@ -90,43 +91,63 @@ func main() {
 	} else {
 		logrus.SetLevel(logrus.InfoLevel)
 	}
-
+	var err error
 	switch {
 	case args.Backup != nil:
 		if len(args.Backup.Targets) == 0 {
 			logrus.Fatal("No targets specified")
 		}
-		backedUp = backupRepos(args.Backup.Targets, !args.Backup.NoClone, loadToken())
+
+		backedUp, err = backupRepos(args.Backup.Targets, !args.Backup.NoClone, loadToken())
+		if err != nil {
+			logrus.Fatal(err)
+		}
 	default:
 		mainMenu()
 	}
 	// List creation
 	if args.Backup.CreateList {
-		createList(backedUp)
+		if err := createList(backedUp); err != nil {
+			logrus.Fatal(err)
+		}
 	}
 }
 
-func createList(repos map[string]map[string]map[string]string) {
+func createList(repos map[string]map[string]map[string]string) error {
 	logrus.Info("Creating list of repositories")
 	// Write the repos to a JSON file
 	if _, err := os.Stat(backupDirectory); !os.IsExist(err) {
 		// Maybe just make a file instead of a directory, for now, a directory is fine
-		err = os.MkdirAll(backupDirectory, 0600)
-		checkNilErr(err)
+		if err := os.MkdirAll(backupDirectory, 0600); err != nil {
+			return err
+		}
 	}
 	file, err := os.OpenFile(filepath.Join(backupDirectory, "list.json"), os.O_CREATE|os.O_WRONLY, 0600)
-	checkNilErr(err)
+	if err != nil {
+		return err
+	}
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "    ")
-	err = encoder.Encode(repos)
-	checkNilErr(err)
-	err = file.Close()
-	checkNilErr(err)
+	if err := encoder.Encode(repos); err != nil {
+		return err
+	}
+	if err := file.Close(); err != nil {
+		return err
+	}
+	return nil
 }
 
-func backupRepos(repoTypes []string, clone bool, token string) map[string]map[string]map[string]string {
-	user := gjson.Get(responseContent(ghRequest("https://api.github.com/user", loadToken()).Body), "login")
-
+func backupRepos(repoTypes []string, clone bool, token string) (map[string]map[string]map[string]string, error) {
+	url := "https://api.github.com/user/repos?per_page=100"
+	response, err := ghRequest(url, token)
+	if err != nil {
+		return nil, err
+	}
+	content, err := responseContent(response.Body)
+	if err != nil {
+		return nil, err
+	}
+	user := gjson.Get(content, "login")
 	// Repos is a map of repo names. This is just to store repos in {repoTypes: [<id or full name>: {"description": repoDescription, "url": <html_url or git_pull_url>}, <id or full name>...]} format. So a map of maps
 	repos := map[string]map[string]map[string]string{}
 
@@ -145,21 +166,38 @@ func backupRepos(repoTypes []string, clone bool, token string) map[string]map[st
 
 		if repoType == "repos" {
 			url = "https://api.github.com/user/repos?per_page=100&page="
-			neededPages = calculateNeededPages("repos")
+			neededPages, err = calculateNeededPages("repos")
+			if err != nil {
+				return nil, err
+			}
 			logrus.Info("Getting list of repositories for " + user.String())
 		} else if repoType == "stars" {
 			url = "https://api.github.com/user/starred?per_page=100&page="
-			neededPages = calculateNeededPages("stars")
+			neededPages, err = calculateNeededPages("stars")
+			if err != nil {
+				return nil, err
+			}
 			logrus.Info("Getting list of starred repositories for " + user.String())
 		} else if repoType == "gists" {
 			url = "https://api.github.com/gists?per_page=100&page="
-			neededPages = calculateNeededPages("gists")
+			neededPages, err = calculateNeededPages("gists")
+			if err != nil {
+				return nil, err
+			}
 		}
 		for i := 1; i <= neededPages; i++ {
 			if repoType == "gists" {
-				gistJSON := responseContent(ghRequest(url+strconv.Itoa(i), token).Body)
-				err := json.Unmarshal([]byte(gistJSON), &gistSlice)
-				checkNilErr(err)
+				response, err := ghRequest(url+strconv.Itoa(i), token)
+				if err != nil {
+					return nil, err
+				}
+				gistJSON, err := responseContent(response.Body)
+				if err != nil {
+					return nil, err
+				}
+				if err := json.Unmarshal([]byte(gistJSON), &gistSlice); err != nil {
+					return nil, err
+				}
 				for i := 0; i < len(gistSlice); i++ {
 					owner := gistSlice[i].Owner.Login
 					if clone {
@@ -172,7 +210,9 @@ func backupRepos(repoTypes []string, clone bool, token string) map[string]map[st
 								Password: token,
 							},
 						})
-						checkNilErr(err)
+						if err != nil {
+							return nil, err
+						}
 					}
 					// Set the description and url of the gist
 					repos[repoType][gistSlice[i].ID] = map[string]string{}
@@ -181,9 +221,17 @@ func backupRepos(repoTypes []string, clone bool, token string) map[string]map[st
 					repos[repoType][gistSlice[i].ID]["url"] = gistSlice[i].GitPullURL
 				}
 			} else if repoType == "repos" || repoType == "stars" {
-				repoJSON := responseContent(ghRequest(url+strconv.Itoa(i), token).Body)
-				err := json.Unmarshal([]byte(repoJSON), &repoSlice)
-				checkNilErr(err)
+				response, err := ghRequest(url+strconv.Itoa(i), token)
+				if err != nil {
+					return nil, err
+				}
+				repoJSON, err := responseContent(response.Body)
+				if err != nil {
+					return nil, err
+				}
+				if err := json.Unmarshal([]byte(repoJSON), &repoSlice); err != nil {
+					return nil, err
+				}
 				for i := 0; i < len(repoSlice); i++ {
 					owner := repoSlice[i].Owner.Login
 					if clone {
@@ -196,7 +244,10 @@ func backupRepos(repoTypes []string, clone bool, token string) map[string]map[st
 								Password: token,
 							},
 						})
-						checkNilErr(err)
+						if err != nil {
+							return nil, err
+						}
+
 					}
 					// Set the description and url of the repo
 					repos[repoType][repoSlice[i].Name] = map[string]string{}
@@ -208,21 +259,27 @@ func backupRepos(repoTypes []string, clone bool, token string) map[string]map[st
 			}
 		}
 	}
-	return repos
+	return repos, nil
 }
 
-func calculateNeededPages(whichRepos string) int {
+func calculateNeededPages(whichRepos string) (int, error) {
 	perPage := 10
 	if whichRepos == "repos" {
-		response := ghRequest("https://api.github.com/user", loadToken())
-		json := responseContent(response.Body)
+		response, err := ghRequest("https://api.github.com/user", loadToken())
+		if err != nil {
+			return 0, err
+		}
+		json, err := responseContent(response.Body)
+		if err != nil {
+			return 0, err
+		}
 		publicRepos := gjson.Get(json, "public_repos")
 		privateRepos := gjson.Get(json, "total_private_repos")
 		totalRepos := publicRepos.Num + privateRepos.Num
 		logrus.Info("Total repositories: " + strconv.Itoa(int(totalRepos)))
 		neededPages := math.Ceil(totalRepos / float64(perPage))
 		logrus.Info("Total pages needed:" + strconv.Itoa(int(neededPages)))
-		return int(neededPages)
+		return int(neededPages), nil
 	} else if whichRepos == "stars" {
 		total := 0
 		var starSlice []repoStruct
@@ -230,57 +287,80 @@ func calculateNeededPages(whichRepos string) int {
 		// If the length of the slice is 0, the request prior to the one just made was the last page
 		for len(starSlice) == perPage || pageNumber == 0 {
 			pageNumber++
-			starJSON := responseContent(ghRequest("https://api.github.com/user/starred?page="+strconv.Itoa(pageNumber)+"&per_page="+strconv.Itoa(perPage), loadToken()).Body)
-			err := json.Unmarshal([]byte(starJSON), &starSlice)
-			checkNilErr(err)
+			url := "https://api.github.com/user/starred?page=" + strconv.Itoa(pageNumber) + "&per_page=" + strconv.Itoa(perPage)
+			requestContent, err := ghRequest(url, loadToken())
+			if err != nil {
+				return 0, err
+			}
+			starJSON, err := responseContent(requestContent.Body)
+			if err != nil {
+				return 0, err
+			}
+			if err := json.Unmarshal([]byte(starJSON), &starSlice); err != nil {
+				return 0, err
+			}
 			total += len(starSlice)
 		}
 		logrus.Info("Total starred repositories: " + strconv.Itoa(total))
 		logrus.Info("Total pages needed:" + strconv.Itoa(pageNumber))
-		return pageNumber
+		return pageNumber, nil
 	} else if whichRepos == "gists" {
 		total := 0
 		var gistSlice []gistStruct
 		var pageNumber int
 		for len(gistSlice) == perPage || pageNumber == 0 {
 			pageNumber++
-			gistJSON := responseContent(ghRequest("https://api.github.com/gists?page="+strconv.Itoa(pageNumber)+"&per_page="+strconv.Itoa(perPage), loadToken()).Body)
-			err := json.Unmarshal([]byte(gistJSON), &gistSlice)
-			checkNilErr(err)
+			url := "https://api.github.com/gists?page=" + strconv.Itoa(pageNumber) + "&per_page=" + strconv.Itoa(perPage)
+			requestContent, err := ghRequest(url, loadToken())
+			if err != nil {
+				return 0, err
+			}
+			gistJSON, err := responseContent(requestContent.Body)
+			if err != nil {
+				return 0, err
+			}
+			if err := json.Unmarshal([]byte(gistJSON), &gistSlice); err != nil {
+				return 0, err
+			}
 			total += len(gistSlice)
 		}
 		logrus.Info("Total gists: " + strconv.Itoa(total))
 		logrus.Info("Total pages needed: " + strconv.Itoa(pageNumber))
-		return pageNumber
+		return pageNumber, nil
 	}
 	// This functions as an else statement since the function will return before this point if the argument is valid.
-	logrus.Fatal("Something went wrong, the function calculateNeededPages() was called with an invalid argument.")
-	return 0
+	return 0, errors.New("invalid argument (must be \"repos\", \"stars\", or \"gists\")")
 }
 
-func responseContent(responseBody io.ReadCloser) string {
+func responseContent(responseBody io.ReadCloser) (string, error) {
 	bytes, err := io.ReadAll(responseBody)
-	checkNilErr(err)
-	return string(bytes)
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), nil
 }
 
-func ghRequest(url, token string) *http.Response{
+func ghRequest(url, token string) (*http.Response, error) {
 	req, err := http.NewRequest(http.MethodGet, url, http.NoBody)
-	checkNilErr(err)
+	if err != nil {
+		return nil, err
+	}
 	req.Header.Set("Authorization", "token "+token)
 	// req.Header.Set("Accept", "application/vnd.github.v3+json")
 	req.Header.Set("Accept", "testing-github-api")
 	response, err := http.DefaultClient.Do(req)
-	checkNilErr(err)
+	if err != nil {
+		return nil, err
+	}
 	if response.StatusCode != 200 {
-		logrus.Fatal("Something went wrong, status code is not \"200 OK\"")
-		logrus.Fatal("Response status code: " + response.Status)
 		if response.StatusCode == 401 {
-			logrus.Fatal("Unauthorized, check your token")
+			return nil, errors.New("unauthorized, check your token")
+		} else {
+			return nil, errors.New("something went wrong, status code is not \"200 OK\", response status code: " + response.Status)
 		}
 
 	}
-	return response
+	return response, nil
 }
 
 func loadToken() string {
@@ -320,11 +400,5 @@ func backupMenu() {
 		backupRepos([]string{"repos", "stars"}, true, loadToken())
 	default:
 		logrus.Fatalln("Invalid selection")
-	}
-}
-
-func checkNilErr(err any) {
-	if err != nil {
-		logrus.Fatal(err)
 	}
 }
