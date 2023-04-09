@@ -13,6 +13,7 @@ Go program that utilizes the Github API to backup all repositories for a user. I
 These are examples, for full usage info, run `gobackup-github --help`  
 * `gobackup-github` - Use the interactive UI 
 * `gobackup-github backup repos` - Backup your repositories 
+* `gobackup-github backup gists` - Backup your gists 
 * `gobackup-github backup stars` - Backup your starred repositories 
 * `gobackup-github repos stars` - Backup your repositories and your starred repositories  
 * `gobackup-github backup --create-list --no-clone repos stars` - Record the names and URLs of starred and owned repositories, without cloning them  
