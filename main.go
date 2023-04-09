@@ -98,7 +98,7 @@ func main() {
 			logrus.Fatal("No targets specified")
 		}
 
-		backedUp, err = backupRepos(args.Backup.Targets, !args.Backup.NoClone, loadToken())
+		backedUp, err = backupRepos(args.Backup.Targets, !args.Backup.NoClone, args.Token)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -138,7 +138,7 @@ func createList(repos map[string]map[string]map[string]string) error {
 }
 
 func backupRepos(repoTypes []string, clone bool, token string) (map[string]map[string]map[string]string, error) {
-	url := "https://api.github.com/user/repos?per_page=100"
+	url := "https://api.github.com/user"
 	response, err := ghRequest(url, token)
 	if err != nil {
 		return nil, err
@@ -148,6 +148,7 @@ func backupRepos(repoTypes []string, clone bool, token string) (map[string]map[s
 		return nil, err
 	}
 	user := gjson.Get(content, "login")
+
 	// Repos is a map of repo names. This is just to store repos in {repoTypes: [<id or full name>: {"description": repoDescription, "url": <html_url or git_pull_url>}, <id or full name>...]} format. So a map of maps
 	repos := map[string]map[string]map[string]string{}
 
@@ -166,21 +167,21 @@ func backupRepos(repoTypes []string, clone bool, token string) (map[string]map[s
 
 		if repoType == "repos" {
 			url = "https://api.github.com/user/repos?per_page=100&page="
-			neededPages, err = calculateNeededPages("repos")
+			neededPages, err = calculateNeededPages("repos", token)
 			if err != nil {
 				return nil, err
 			}
 			logrus.Info("Getting list of repositories for " + user.String())
 		} else if repoType == "stars" {
 			url = "https://api.github.com/user/starred?per_page=100&page="
-			neededPages, err = calculateNeededPages("stars")
+			neededPages, err = calculateNeededPages("stars", token)
 			if err != nil {
 				return nil, err
 			}
 			logrus.Info("Getting list of starred repositories for " + user.String())
 		} else if repoType == "gists" {
 			url = "https://api.github.com/gists?per_page=100&page="
-			neededPages, err = calculateNeededPages("gists")
+			neededPages, err = calculateNeededPages("gists", token)
 			if err != nil {
 				return nil, err
 			}
@@ -203,10 +204,11 @@ func backupRepos(repoTypes []string, clone bool, token string) (map[string]map[s
 					if clone {
 						cloneDirectory := filepath.Join(backupDirectory, repoType, owner, gistSlice[i].ID)
 						logrus.Infof("Cloning %v (iteration %v) to %v\n", gistSlice[i].ID, i+1, cloneDirectory)
+						logrus.Debug("Using token " + token + " for authentication")
 						_, err = git.PlainClone(cloneDirectory, false, &git.CloneOptions{
 							URL: gistSlice[i].GitPullURL,
 							Auth: &githttp.BasicAuth{
-								Username: user.String(), // anything except an empty string
+								Username: user.String(),
 								Password: token,
 							},
 						})
@@ -237,11 +239,13 @@ func backupRepos(repoTypes []string, clone bool, token string) (map[string]map[s
 					if clone {
 						cloneDirectory := filepath.Join(backupDirectory, repoType, owner, repoSlice[i].Name)
 						logrus.Infof("Cloning %v (iteration %v) to %v\n", repoSlice[i].Name, i+1, cloneDirectory)
+						logrus.Debug("Username: " + user.String() + " Password: " + token)
+						logrus.Debug("URL: " + repoSlice[i].HTMLURL)
 						_, err = git.PlainClone(cloneDirectory, false, &git.CloneOptions{
 							URL: repoSlice[i].HTMLURL,
 							Auth: &githttp.BasicAuth{
 								Username: user.String(), // anything except an empty string
-								Password: token,
+								Password: "token",
 							},
 						})
 						if err != nil {
@@ -262,10 +266,10 @@ func backupRepos(repoTypes []string, clone bool, token string) (map[string]map[s
 	return repos, nil
 }
 
-func calculateNeededPages(whichRepos string) (int, error) {
+func calculateNeededPages(whichRepos string, token string) (int, error) {
 	perPage := 10
 	if whichRepos == "repos" {
-		response, err := ghRequest("https://api.github.com/user", loadToken())
+		response, err := ghRequest("https://api.github.com/user", token)
 		if err != nil {
 			return 0, err
 		}
@@ -393,11 +397,11 @@ func backupMenu() {
 	backupSelection = strings.TrimSpace(backupSelection)
 	switch backupSelection {
 	case "1":
-		backupRepos([]string{"repos"}, true, loadToken())
+		backupRepos([]string{"repos"}, true, args.Token)
 	case "2":
-		backupRepos([]string{"stars"}, true, loadToken())
+		backupRepos([]string{"stars"}, true, args.Token)
 	case "3":
-		backupRepos([]string{"repos", "stars"}, true, loadToken())
+		backupRepos([]string{"repos", "stars"}, true, args.Token)
 	default:
 		logrus.Fatalln("Invalid selection")
 	}
