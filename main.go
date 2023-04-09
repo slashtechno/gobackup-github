@@ -204,7 +204,7 @@ func backupRepos(repoTypes []string, clone bool, token string) (map[string]map[s
 					if clone {
 						cloneDirectory := filepath.Join(backupDirectory, repoType, owner, gistSlice[i].ID)
 						logrus.Infof("Cloning %v (iteration %v) to %v\n", gistSlice[i].ID, i+1, cloneDirectory)
-						logrus.Debug("Using token " + token + " for authentication")
+						logrus.Debug("URL: " + gistSlice[i].GitPullURL)
 						_, err = git.PlainClone(cloneDirectory, false, &git.CloneOptions{
 							URL: gistSlice[i].GitPullURL,
 							Auth: &githttp.BasicAuth{
@@ -239,13 +239,12 @@ func backupRepos(repoTypes []string, clone bool, token string) (map[string]map[s
 					if clone {
 						cloneDirectory := filepath.Join(backupDirectory, repoType, owner, repoSlice[i].Name)
 						logrus.Infof("Cloning %v (iteration %v) to %v\n", repoSlice[i].Name, i+1, cloneDirectory)
-						logrus.Debug("Username: " + user.String() + " Password: " + token)
 						logrus.Debug("URL: " + repoSlice[i].HTMLURL)
 						_, err = git.PlainClone(cloneDirectory, false, &git.CloneOptions{
 							URL: repoSlice[i].HTMLURL,
 							Auth: &githttp.BasicAuth{
 								Username: user.String(), // anything except an empty string
-								Password: "token",
+								Password: token,
 							},
 						})
 						if err != nil {
