@@ -43,7 +43,8 @@ type gistStruct struct {
 
 var backedUp = map[string]map[string]map[string]string{}
 
-var dateToday = time.Now().Format("01-02-2006")
+// Set dateToday to the current date and time in the fomrat of MM-DD-YYYY_HH-MM-SS
+var dateToday = time.Now().Format("01-02-2006_15-04-05")
 
 var (
 	currentDirectory, _ = os.Getwd()
@@ -51,10 +52,11 @@ var (
 )
 
 type BackupCmd struct {
-	Targets    []string `arg:"positional" help:"What to backup. Options are: repos; stars; gists"`
-	CreateList bool     `arg:"-c,--create-list" help:"Create a list of repositories"`
-	NoClone    bool     `arg:"-n,--no-clone" help:"Don't clone the repositories"`
-	// Add backup dir
+	Targets         []string `arg:"positional" help:"What to backup. Options are: repos; stars; gists"`
+	CreateList      bool     `arg:"-c,--create-list" help:"Create a list of repositories"`
+	NoClone         bool     `arg:"-n,--no-clone" help:"Don't clone the repositories"`
+	Repeat          bool     `arg:"-r,--repeat, env:REPEAT" help:"Repeat the backup process every 24 hours"`
+	BackupDirectory string   `arg:"-d,--backup-directory, env:BACKUP_DIRECTORY" help:"Directory to place backups in - if repeat is enabled, backups will be placed in this directory with a timestamp"`
 }
 
 var args struct {
@@ -79,7 +81,7 @@ func main() {
 	if args.LogLevel == "debug" {
 		logrus.SetLevel(logrus.DebugLevel)
 		// Enable line numbers in debug logs - Doesn't help too much since a fatal error still needs to be debugged
-		logrus.SetReportCaller(true)
+		// logrus.SetReportCaller(true)
 	} else if args.LogLevel == "info" {
 		logrus.SetLevel(logrus.InfoLevel)
 	} else if args.LogLevel == "warning" {
@@ -92,25 +94,54 @@ func main() {
 		logrus.SetLevel(logrus.InfoLevel)
 	}
 	var err error
+	var parentDirectory string
 	switch {
 	case args.Backup != nil:
 		if len(args.Backup.Targets) == 0 {
 			logrus.Fatal("No targets specified")
 		}
-
-		backedUp, err = backupRepos(args.Backup.Targets, !args.Backup.NoClone, args.Token)
-		if err != nil {
-			logrus.Fatal(err)
+		if args.Backup.BackupDirectory != "" {
+			backupDirectory = args.Backup.BackupDirectory
+		} else if args.Backup.Repeat && args.Backup.BackupDirectory == "" {
+			backupDirectory = filepath.Join(currentDirectory, "backups")
 		}
+		if args.Backup.Repeat {
+			parentDirectory = backupDirectory
+		}
+		for {
+			// A new backup directory needs to be set if repeat is enabled. If repeat is true
+			// A parent directory will be created (default is "backups") and all new backups will be placed in there
+			if args.Backup.Repeat {
+				logrus.Info("Starting backup process; repeat is enabled")
+				backupDirectory = filepath.Join(parentDirectory, "github-backup-from-"+time.Now().Format("01-02-2006_15-04-05"))
+			}
+			// Repo backup
+			backedUp, err = backupRepos(args.Backup.Targets, !args.Backup.NoClone, args.Token)
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			// List creation
+			if args.Backup.CreateList {
+				if err := createList(backedUp); err != nil {
+					logrus.Fatal(err)
+				}
+			}
+			// If the backup process is not set to repeat, exit. If it is, sleep for 24 hours and repeat
+			// If a custom sleep timing is implemented, this will need to be changed
+			if !args.Backup.Repeat {
+				break
+			} else {
+				logrus.Info("Sleeping for 24 hours")
+				time.Sleep(24 * time.Hour)
+				// time.Sleep(5 * time.Second) // For testing purposes
+			}
+
+		}
+
 	default:
 		mainMenu()
 	}
-	// List creation
-	if args.Backup.CreateList {
-		if err := createList(backedUp); err != nil {
-			logrus.Fatal(err)
-		}
-	}
+
 }
 
 func createList(repos map[string]map[string]map[string]string) error {
@@ -185,6 +216,7 @@ func backupRepos(repoTypes []string, clone bool, token string) (map[string]map[s
 			if err != nil {
 				return nil, err
 			}
+			logrus.Info("Getting list of gists for " + user.String())
 		}
 		for i := 1; i <= neededPages; i++ {
 			if repoType == "gists" {
