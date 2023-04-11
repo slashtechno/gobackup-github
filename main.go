@@ -43,12 +43,9 @@ type gistStruct struct {
 
 var backedUp = map[string]map[string]map[string]string{}
 
-// Set dateToday to the current date and time in the fomrat of MM-DD-YYYY_HH-MM-SS
-var dateToday = time.Now().Format("01-02-2006_15-04-05")
-
 var (
 	currentDirectory, _ = os.Getwd()
-	backupDirectory     = filepath.Join(currentDirectory, "github-backup-from-"+dateToday)
+	backupDirectory     string
 )
 
 type BackupCmd struct {
@@ -56,7 +53,7 @@ type BackupCmd struct {
 	CreateList      bool     `arg:"-c,--create-list" help:"Create a list of repositories"`
 	NoClone         bool     `arg:"-n,--no-clone" help:"Don't clone the repositories"`
 	Repeat          bool     `arg:"-r,--repeat, env:REPEAT" help:"Repeat the backup process every 24 hours"`
-	BackupDirectory string   `arg:"-d,--backup-directory, env:BACKUP_DIRECTORY" help:"Directory to place backups in - if repeat is enabled, backups will be placed in this directory with a timestamp"`
+	BackupDirectory string   `arg:"-d,--backup-directory, env:BACKUP_DIRECTORY" help:"Directory to place backups in"`
 }
 
 var args struct {
@@ -71,7 +68,6 @@ var args struct {
 }
 
 func main() {
-	fmt.Println("Today is " + dateToday)
 	// Command line stuff
 	godotenv.Load()
 	arg.MustParse(&args)
@@ -95,26 +91,32 @@ func main() {
 	}
 	var err error
 	var parentDirectory string
+
+	// A default backup directory is set to the current directory + /backups
+	parentDirectory = filepath.Join(currentDirectory, "backups")
+	backupDirectory = setBackupDirectory(parentDirectory)
+
 	switch {
 	case args.Backup != nil:
 		if len(args.Backup.Targets) == 0 {
 			logrus.Fatal("No targets specified")
 		}
+
 		if args.Backup.BackupDirectory != "" {
-			backupDirectory = args.Backup.BackupDirectory
-		} else if args.Backup.Repeat && args.Backup.BackupDirectory == "" {
-			backupDirectory = filepath.Join(currentDirectory, "backups")
+			logrus.Info("Backup directory set to " + args.Backup.BackupDirectory)
+			parentDirectory = args.Backup.BackupDirectory
 		}
-		if args.Backup.Repeat {
-			parentDirectory = backupDirectory
-		}
+
 		for {
-			// A new backup directory needs to be set if repeat is enabled. If repeat is true
-			// A parent directory will be created (default is "backups") and all new backups will be placed in there
 			if args.Backup.Repeat {
-				logrus.Info("Starting backup process; repeat is enabled")
-				backupDirectory = filepath.Join(parentDirectory, "github-backup-from-"+time.Now().Format("01-02-2006_15-04-05"))
+				logrus.Info("Starting backup process. Repeat is enabled. Backups will be placed in " + parentDirectory + ".")
+			} else {
+				logrus.Info("Starting backup process. Backup will be placed in " + parentDirectory + ".")
 			}
+
+			// Set up the backup directory
+			backupDirectory = setBackupDirectory(parentDirectory)
+
 			// Repo backup
 			backedUp, err = backupRepos(args.Backup.Targets, !args.Backup.NoClone, args.Token)
 			if err != nil {
@@ -436,4 +438,11 @@ func backupMenu() {
 	default:
 		logrus.Fatalln("Invalid selection")
 	}
+}
+
+func setBackupDirectory(parentDirectory string) string {
+	// Set dateToday to the current date and time in the fomrat of MM-DD-YYYY_HH-MM-SS
+	dateToday := time.Now().Format("01-02-2006_15-04-05")
+	backupDirectory = filepath.Join(parentDirectory, "github-backup-from-"+dateToday)
+	return backupDirectory
 }
