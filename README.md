@@ -1,6 +1,6 @@
 # gobackup-github  
-[![Build on multiple platforms](https://github.com/slashtechno/gobackup-github/actions/workflows/go-build.yml/badge.svg)](https://github.com/slashtechno/gobackup-github/actions/workflows/go-build.yml)![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/slashtechno/gobackup-github)  
-Go program that utilizes the Github API to backup all repositories for a user. In addition, can backup starred repositories  
+[![Build on multiple platforms](https://github.com/slashtechno/gobackup-github/actions/workflows/go-build.yml/badge.svg)](https://github.com/slashtechno/gobackup-github/actions/workflows/go-build.yml)![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/slashtechno/gobackup-github)[![Create and publish a Docker image](https://github.com/slashtechno/gobackup-github/actions/workflows/docker.yml/badge.svg?branch=master)](https://github.com/slashtechno/gobackup-github/actions/workflows/docker.yml)  
+Go program that utilizes the Github API to backup all repositories for a user. In addition, it can backup starred repositories and gists.    
 
 ### Setup  
 1. Create a Github personal access token with the following scopes:  `read:user, repo`  
