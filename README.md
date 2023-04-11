@@ -18,5 +18,20 @@ These are examples, for full usage info, run `gobackup-github --help`
 * `gobackup-github repos stars` - Backup your repositories and your starred repositories  
 * `gobackup-github backup --create-list --no-clone repos stars` - Record the names and URLs of starred and owned repositories, without cloning them  
 
+### Docker  
+This program can also be run in Docker.  
+To pull the program, run `docker pull ghcr.io/slashtechno/gobackup-github:latest`  
+An example of running the program in Docker:  
+<!-- ```bash
+docker run --rm -it --name gobackup-github -v ${PWD}/backups:/backups --env-file ${PWD}/.env gobackup-github backup -d /backups -c repos gists
+```   -->
+```bash
+docker run --rm -it --name gobackup-github -v ${PWD}/backups:/backups --env-file ${PWD}/.env ghcr.io/slashtechno/gobackup-github gobackup-github backup -d /backups -c repos gists
+```  
+It can also run with a loop that runs every 24 hours:  
+```bash
+docker run -it --name gobackup-github -v ${PWD}/backups:/backups --env-file ${PWD}/.env ghcr.io/slashtechno/gobackup-github gobackup-github backup -d /backups -r -c repos gists
+``` 
+
 ### Why?  
 I wanted a simple way to backup my Github repositories. I also wanted to learn Go and APIs. Thus, I started this project as a way to create my first Go project, use the Github API, and make a utility to backup Github repositories.  
