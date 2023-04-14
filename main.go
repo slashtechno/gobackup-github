@@ -466,7 +466,7 @@ func calculateOldestBackup(parentDirectory string) (string, error) {
 		return "", err
 	}
 	// Get the date and time of each backup directory
-	backupDirectories := []map[string]string{}
+	var backupDirectories []map[string]string
 	for _, file := range ioReader {
 		if file.IsDir() {
 			// Set the full path and the name of the directory
