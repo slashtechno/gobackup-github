@@ -55,7 +55,7 @@ type BackupCmd struct {
 	NoClone         bool     `arg:"-n,--no-clone" help:"Don't clone the repositories"`
 	Repeat          bool     `arg:"-r,--repeat, env:REPEAT" help:"Repeat the backup process every 24 hours"`
 	BackupDirectory string   `arg:"-d,--backup-directory, env:BACKUP_DIRECTORY" help:"Directory to place backups in"`
-	MaxBackups      int      `arg:"-m,--max-backups, env:MAX_BACKUPS" help:"Maximum number of backups to keep" default:"10"`
+	MaxBackups      int      `arg:"-m,--max-backups, env:MAX_BACKUPS" help:"Maximum number of backups to keep. Setting to -1 will cause no backups to be deleted" default:"10"`
 }
 
 var args struct {
@@ -110,6 +110,12 @@ func main() {
 		}
 
 		for {
+			// If there are too many backups, delete the oldest ones
+			err = rollBackups(parentDirectory, args.Backup.MaxBackups)
+			if err != nil {
+				logrus.Fatal(err)
+			}
+
 			if args.Backup.Repeat {
 				logrus.Info("Starting backup process. Repeat is enabled. Backups will be placed in " + parentDirectory + ".")
 			} else {
@@ -136,8 +142,8 @@ func main() {
 				break
 			} else {
 				logrus.Info("Sleeping for 24 hours")
-				time.Sleep(24 * time.Hour)
-				// time.Sleep(5 * time.Second) // For testing purposes
+				// time.Sleep(24 * time.Hour)
+				time.Sleep(1 * time.Second) // For testing purposes
 			}
 
 		}
@@ -302,7 +308,7 @@ func backupRepos(repoTypes []string, clone bool, token string) (map[string]map[s
 }
 
 func calculateNeededPages(whichRepos string, token string) (int, error) {
-	perPage := 10
+	perPage := 100 // Max is 100
 	if whichRepos == "repos" {
 		response, err := ghRequest("https://api.github.com/user", token)
 		if err != nil {
@@ -506,7 +512,7 @@ func calculateOldestBackup(parentDirectory string) (string, error) {
 		// Create a new map to store the integers
 		backupDirectoryIntegers := map[string]int{}
 		for key, value := range backupDirectory {
-			if key != "fullPath" {
+			if key == "year" || key == "month" || key == "day" || key == "hour" || key == "minute" || key == "second" {
 				backupDirectoryIntegers[key], err = strconv.Atoi(value)
 				if err != nil {
 					return "", err
@@ -535,4 +541,47 @@ func calculateOldestBackup(parentDirectory string) (string, error) {
 		return backupDirectories[i]["daysSinceCreation"] < backupDirectories[j]["daysSinceCreation"]
 	})
 	return backupDirectories[0]["fullPath"], nil
+}
+
+func rollBackups(parentDirectory string, maxBackups int) error {
+
+	// Check if parentDirectory is exists, if it doesn't, return nil (maybe create it?)
+	_, err := os.Stat(parentDirectory)
+	if os.IsNotExist(err) {
+		// Maybe create the directory?
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	// Get a list of all the directories in the parent directory
+	directories, err := os.ReadDir(parentDirectory)
+	if err != nil {
+		return err
+	}
+	// Get the number of backup directories
+	backupDirectories := 0
+	for _, file := range directories {
+		if file.IsDir() {
+			// Check if the directory is a backup directory
+			if strings.HasPrefix(file.Name(), "github-backup-from-") {
+				backupDirectories++
+			}
+		}
+	}
+
+	if backupDirectories > maxBackups {
+		// Get the oldest backup directory
+		oldestBackup, err := calculateOldestBackup(parentDirectory)
+		if err != nil {
+			return err
+		}
+		logrus.Info("Deleting the oldest backup directory: " + oldestBackup)
+		// Delete the oldest backup directory
+		err = os.RemoveAll(oldestBackup)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
