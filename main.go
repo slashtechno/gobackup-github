@@ -142,8 +142,8 @@ func main() {
 				break
 			} else {
 				logrus.Info("Sleeping for 24 hours")
-				// time.Sleep(24 * time.Hour)
-				time.Sleep(1 * time.Second) // For testing purposes
+				time.Sleep(24 * time.Hour)
+				// time.Sleep(1 * time.Second) // For testing purposes
 			}
 
 		}
