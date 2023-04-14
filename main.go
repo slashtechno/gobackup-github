@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -54,6 +55,7 @@ type BackupCmd struct {
 	NoClone         bool     `arg:"-n,--no-clone" help:"Don't clone the repositories"`
 	Repeat          bool     `arg:"-r,--repeat, env:REPEAT" help:"Repeat the backup process every 24 hours"`
 	BackupDirectory string   `arg:"-d,--backup-directory, env:BACKUP_DIRECTORY" help:"Directory to place backups in"`
+	MaxBackups      int      `arg:"-m,--max-backups, env:MAX_BACKUPS" help:"Maximum number of backups to keep" default:"10"`
 }
 
 var args struct {
@@ -445,4 +447,92 @@ func setBackupDirectory(parentDirectory string) string {
 	dateToday := time.Now().Format("01-02-2006_15-04-05")
 	backupDirectory = filepath.Join(parentDirectory, "github-backup-from-"+dateToday)
 	return backupDirectory
+
+}
+
+func calculateOldestBackup(parentDirectory string) (string, error) {
+	// Backup directory names are in the format of "github-backup-from-MM-DD-YYYY_HH-MM-SS"
+	// Get the oldest backup directory
+
+	// Get a list of all the directories in the parent directory
+	ioReader, err := os.ReadDir(parentDirectory)
+	if err != nil {
+		return "", err
+	}
+	// Get the date and time of each backup directory
+	backupDirectories := []map[string]string{}
+	for _, file := range ioReader {
+		if file.IsDir() {
+			// Set the full path and the name of the directory
+			fullPath := filepath.Join(parentDirectory, file.Name())
+			name := file.Name()
+			// Check if the directory is a backup directory
+			if strings.HasPrefix(name, "github-backup-from-") {
+				// Get the date and time from the directory name
+				dateTime := strings.TrimPrefix(name, "github-backup-from-")
+				date := strings.Split(dateTime, "_")[0]
+				time := strings.Split(dateTime, "_")[1]
+
+				// Separate the date and time into year, month, and day - hour, minute, and second. Convert into integers via
+				year := strings.Split(date, "-")[2]
+				month := strings.Split(date, "-")[0]
+				day := strings.Split(date, "-")[1]
+				hour := strings.Split(time, "-")[0]
+				minute := strings.Split(time, "-")[1]
+				second := strings.Split(time, "-")[2]
+
+				// Add the directory to the map
+				backupDirectories = append(backupDirectories, map[string]string{
+					"fullPath": fullPath,
+					"year":     year,
+					"month":    month,
+					"day":      day,
+					"hour":     hour,
+					"minute":   minute,
+					"second":   second})
+
+			}
+		}
+	}
+	// Sort the backup directories by date and time by getting the days since June 13, 2022 (the date of the first commit to this repository)
+	// Subtract the date and time from June 13, 2022 at 00:00:00
+	// The oldest backup directory will be the one with the lowest number
+	// The newest backup directory will be the one with the highest number
+
+	creationDate := time.Date(2022, 6, 13, 0, 0, 0, 0, time.UTC)
+
+	for i, backupDirectory := range backupDirectories {
+		// Convert the date and times into integers
+		// Create a new map to store the integers
+		backupDirectoryIntegers := map[string]int{}
+		for key, value := range backupDirectory {
+			if key != "fullPath" {
+				backupDirectoryIntegers[key], err = strconv.Atoi(value)
+				if err != nil {
+					return "", err
+				}
+				// Turn the date and time into a time.Time object
+				backupDate := time.Date(
+					backupDirectoryIntegers["year"],
+					time.Month(backupDirectoryIntegers["month"]),
+					backupDirectoryIntegers["day"],
+					backupDirectoryIntegers["hour"],
+					backupDirectoryIntegers["minute"],
+					backupDirectoryIntegers["second"],
+					0, time.UTC)
+				// Subtract the date and time from June 13, 2022 at 00:00:00
+				daysSinceCreation := backupDate.Sub(creationDate).Seconds() / (60 * 60 * 24) // Convert seconds to minutes, then hours, then days to get an accurate number of days
+				// Add the days since creation to the backup directory map
+				backupDirectories[i]["daysSinceCreation"] = strconv.FormatFloat(daysSinceCreation, 'f', -1, 64)
+				// 'f' means that the number will be formatted without an exponent, -1 means that the precision will be as high as possible, 64 means that the number will be a float64.
+
+			}
+		}
+	}
+	// Sort the backup directories by days since creation
+	// sort.Slice basically sorts the backup directories by the days since creation. The anonymous function is the sorting function. It takes two indexes of the backup directories and compares them. The returned value is a boolean. If the value is true, then the first index will be before the second index. If the value is false, then the second index will be before the first index.
+	sort.Slice(backupDirectories, func(i, j int) bool { // i and j are the indexes of the backup directories. So i would be 0 and j would be 1, then i would be 1 and j would be 2, etc.
+		return backupDirectories[i]["daysSinceCreation"] < backupDirectories[j]["daysSinceCreation"]
+	})
+	return backupDirectories[0]["fullPath"], nil
 }
