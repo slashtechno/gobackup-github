@@ -30,7 +30,7 @@ docker run --rm -it --name gobackup-github -v ${PWD}/backups:/backups --env-file
 ```  
 It can also run with a loop that runs every 24 hours:  
 ```bash
-docker run -it --name gobackup-github -v ${PWD}/backups:/backups --env-file ${PWD}/.env ghcr.io/slashtechno/gobackup-github gobackup-github backup -d /backups -r -c repos gists
+docker run -it -d --name gobackup-github -v ${PWD}/backups:/backups --env-file ${PWD}/.env ghcr.io/slashtechno/gobackup-github gobackup-github backup /backups -r -c repos gists
 ``` 
 
 ### Why?  

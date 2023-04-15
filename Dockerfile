@@ -20,4 +20,4 @@ RUN chmod +x /usr/local/bin/backup
 # Single run:
 # docker run --rm -it --name gobackup-github -v ${PWD}/backups:/backups --env-file ${PWD}/.env gobackup-github backup -d /backups -c repos gists
 # Repeating run:
-# docker run -it --name gobackup-github -v ${PWD}/backups:/backups --env-file ${PWD}/.env gobackup-github backup -d /backups -r -c repos gists
+# docker run -it -d --name gobackup-github -v ${PWD}/backups:/backups --env-file ${PWD}/.env gobackup-github backup /backups -r -c repos gists
