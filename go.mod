@@ -6,7 +6,7 @@ require (
 	github.com/alexflint/go-arg v1.4.3
 	github.com/go-git/go-git/v5 v5.6.1
 	github.com/joho/godotenv v1.5.1
-	github.com/sirupsen/logrus v1.9.0
+	github.com/sirupsen/logrus v1.9.3
 	github.com/tidwall/gjson v1.14.4
 )
 
