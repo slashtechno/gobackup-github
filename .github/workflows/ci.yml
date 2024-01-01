@@ -51,7 +51,7 @@ jobs:
           /home/runner/work/gobackup-github/binaries.zip 
           /home/runner/work/gobackup-github/builds/*
     - name: Upload Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: binaries
         path: /home/runner/work/gobackup-github/builds/*
