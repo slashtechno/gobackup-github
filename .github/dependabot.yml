@@ -7,8 +7,8 @@ updates:
     schedule:
       interval: "monthly"
 
-  # Maintain dependencies for Go
-  - package-ecosystem: "gomod"
-    directory: "/"
-    schedule:
-      interval: "monthly"
+  # # Maintain dependencies for Go
+  # - package-ecosystem: "gomod"
+  #   directory: "/"
+  #   schedule:
+  #     interval: "monthly"
