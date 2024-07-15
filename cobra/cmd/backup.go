@@ -5,9 +5,11 @@ package cmd
 
 import (
 	"fmt"
+	"sync"
+	"time"
 
+	"github.com/slashtechno/gobackup-github/cobra/internal"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // backupCmd represents the backup command
@@ -21,7 +23,12 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("backup called")
+		StartBackup(
+			internal.Viper.GetString("username"),
+			internal.Viper.GetString("token"),
+			internal.Viper.GetString("output"),
+			internal.Viper.GetString("interval"),
+		)
 	},
 }
 
@@ -39,9 +46,38 @@ func init() {
 	// backupCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	// backupCmd.Flags().GetBool("toggle")
 
-	backupCmd.PersistentFlags().StringP("username", "u", "", "GitHub username")
-	viper.BindPFlag("username", backupCmd.PersistentFlags().Lookup("username"))
+	backupCmd.PersistentFlags().StringP("username", "u", "", "GitHub username to backup. Leave blank to backup the authenticated user")
+	internal.Viper.BindPFlag("username", backupCmd.PersistentFlags().Lookup("username"))
 	backupCmd.PersistentFlags().StringP("token", "t", "", "GitHub token")
-	viper.BindPFlag("token", backupCmd.PersistentFlags().Lookup("token"))
+	internal.Viper.BindPFlag("token", backupCmd.PersistentFlags().Lookup("token"))
+	backupCmd.PersistentFlags().StringP("output", "o", "", "Output directory")
+	internal.Viper.BindPFlag("output", backupCmd.PersistentFlags().Lookup("output"))
+	backupCmd.Flags().StringP("interval", "i", "", "Interval to check for new content")
+	internal.Viper.BindPFlag("interval", backupCmd.Flags().Lookup("interval"))
+}
+
+func StartBackup(
+	username string,
+	token string,
+	output string,
+	interval string,
+) {
+	// https://gobyexample.com/tickers
+	if interval != "" {
+		ticker := time.NewTicker(internal.Viper.GetDuration("interval"))
+
+		defer ticker.Stop()
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+
+		go func() {
+			for range ticker.C {
+				// Do backup
+				fmt.Println("Backup")
+			}
+		}()
+		wg.Wait()
+	}
 
 }

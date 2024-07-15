@@ -6,8 +6,8 @@ package cmd
 import (
 	"os"
 
+	"github.com/slashtechno/gobackup-github/cobra/internal"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var ConfigFile string
@@ -43,5 +43,5 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&ConfigFile, "config", "config.yaml", "config file path")
 	rootCmd.MarkPersistentFlagFilename("config", "toml", "yaml", "json")
 	rootCmd.PersistentFlags().StringP("log-level", "l", "asdasda", "Log level")
-	viper.BindPFlag("log-level", rootCmd.PersistentFlags().Lookup("log-level"))
+	internal.Viper.BindPFlag("log-level", rootCmd.PersistentFlags().Lookup("log-level"))
 }
