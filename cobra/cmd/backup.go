@@ -23,7 +23,7 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		StartBackup(
+		startBackup(
 			internal.Viper.GetString("username"),
 			internal.Viper.GetString("token"),
 			internal.Viper.GetString("output"),
@@ -34,17 +34,6 @@ to quickly create a Cobra application.`,
 
 func init() {
 	rootCmd.AddCommand(backupCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// backupCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// backupCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	// backupCmd.Flags().GetBool("toggle")
 
 	backupCmd.PersistentFlags().StringP("username", "u", "", "GitHub username to backup. Leave blank to backup the authenticated user")
 	internal.Viper.BindPFlag("username", backupCmd.PersistentFlags().Lookup("username"))
@@ -62,28 +51,51 @@ func init() {
 	internal.Viper.BindPFlag("interval", backupCmd.Flags().Lookup("interval"))
 }
 
-func StartBackup(
+func startBackup(
 	username string,
 	token string,
 	output string,
 	interval string,
 ) {
+
+	backupConfig := BackupConfig{
+		Username: username,
+		Token:    token,
+		Output:   output,
+	}
+
 	// https://gobyexample.com/tickers
 	if interval != "" {
+		log.Info("Starting backup with interval", "interval", interval)
+
 		ticker := time.NewTicker(internal.Viper.GetDuration("interval"))
-
 		defer ticker.Stop()
-
 		var wg sync.WaitGroup
 		wg.Add(1)
 
+		// Run backup on start
+		backup(backupConfig)
 		go func() {
 			for range ticker.C {
-				// Do backup
-				log.Debug("Backup")
+				backup(backupConfig)
 			}
 		}()
 		wg.Wait()
 	}
+	log.Info("Starting backup")
+	backup(backupConfig)
+
+}
+
+type BackupConfig struct {
+	Username string
+	Token    string
+	Output   string
+}
+
+func backup(config BackupConfig) {
+	// Do backup
+	log.Debug("Backup", "config", config)
+	// https://github.com/google/go-github
 
 }
