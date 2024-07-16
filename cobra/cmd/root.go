@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/slashtechno/gobackup-github/cobra/internal"
+	"github.com/slashtechno/gobackup-github/cobra/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -14,6 +15,10 @@ var ConfigFile string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		utils.SetupLogger(internal.Viper.GetString("log-level"))
+		return nil
+	},
 	// Use:   "cobra",
 	Short: "A tool to backup GitHub repos, stars, and gists",
 	// Long:  ``,
@@ -40,8 +45,11 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
+
 	rootCmd.PersistentFlags().StringVar(&ConfigFile, "config", "config.yaml", "config file path")
 	rootCmd.MarkPersistentFlagFilename("config", "toml", "yaml", "json")
-	rootCmd.PersistentFlags().StringP("log-level", "l", "asdasda", "Log level")
+
+	rootCmd.PersistentFlags().String("log-level", "", "log level")
 	internal.Viper.BindPFlag("log-level", rootCmd.PersistentFlags().Lookup("log-level"))
+	internal.Viper.SetDefault("log-level", "info")
 }
