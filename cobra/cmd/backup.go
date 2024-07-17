@@ -4,10 +4,14 @@ Copyright © 2024 Angad Behl
 package cmd
 
 import (
+	"context"
 	"sync"
 	"time"
 
 	"github.com/charmbracelet/log"
+	"github.com/gofri/go-github-ratelimit/github_ratelimit"
+	"github.com/google/go-github/v63/github"
+
 	"github.com/slashtechno/gobackup-github/cobra/internal"
 	"github.com/spf13/cobra"
 )
@@ -15,13 +19,10 @@ import (
 // backupCmd represents the backup command
 var backupCmd = &cobra.Command{
 	Use:   "backup",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Backup a GitHub user",
+	Long: `Backup either the authenticated user or a specified GitHub user.
+	Backing up the authenticated user clones private repositories as well.
+	`,
 	Run: func(cmd *cobra.Command, args []string) {
 		startBackup(
 			internal.Viper.GetString("username"),
@@ -56,8 +57,7 @@ func startBackup(
 	token string,
 	output string,
 	interval string,
-) {
-
+) error {
 	backupConfig := BackupConfig{
 		Username: username,
 		Token:    token,
@@ -74,17 +74,28 @@ func startBackup(
 		wg.Add(1)
 
 		// Run backup on start
-		backup(backupConfig)
+		err := backup(backupConfig)
+		if err != nil {
+			return err
+		}
 		go func() {
 			for range ticker.C {
-				backup(backupConfig)
+				err = backup(backupConfig)
+				if err != nil {
+					// Don't stop the backup process if one fails
+					log.Error("Failed to backup", "error", err)
+					continue
+				}
 			}
 		}()
 		wg.Wait()
 	}
 	log.Info("Starting backup")
-	backup(backupConfig)
-
+	err := backup(backupConfig)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 type BackupConfig struct {
@@ -93,9 +104,71 @@ type BackupConfig struct {
 	Output   string
 }
 
-func backup(config BackupConfig) {
-	// Do backup
+func backup(config BackupConfig) error {
+	// backup
 	log.Debug("Backup", "config", config)
-	// https://github.com/google/go-github
 
+	// Make an HTTP client that waits if the rate limit is exceeded
+	rateLimiter, err := github_ratelimit.NewRateLimitWaiterClient(nil)
+	if err != nil {
+		return err
+	}
+
+	// .WithEnterpriseURL could probably be used for something like Gitea
+	client := github.NewClient(rateLimiter).WithAuthToken(config.Token)
+	ctx := context.Background()
+
+	// Get the user
+	// https://pkg.go.dev/github.com/google/go-github/v63/github#User
+	// If the username is an empty string, Users.Get will return the authenticated user
+	user, _, err := client.Users.Get(ctx, config.Username)
+	if err != nil {
+		return err
+	}
+	username := user.GetLogin()
+	log.Info("Backing up user", "username", username)
+
+	// https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#list-repositories-for-a-user
+	// https://pkg.go.dev/github.com/google/go-github/v63@v63.0.0/github#RepositoriesService.ListByUser
+	// https://github.com/google/go-github?tab=readme-ov-file#pagination
+	listOptions := github.ListOptions{PerPage: 100}
+	allRepos := []*github.Repository{}
+	if config.Username == "" {
+		opt := &github.RepositoryListByAuthenticatedUserOptions{
+			ListOptions: listOptions,
+		}
+		for {
+			repos, resp, err := client.Repositories.ListByAuthenticatedUser(ctx, opt)
+			if err != nil {
+				return err
+			}
+			allRepos = append(allRepos, repos...)
+			if resp.NextPage == 0 {
+				break
+			}
+			opt.Page = resp.NextPage
+		}
+	} else {
+		opt := &github.RepositoryListByUserOptions{
+			ListOptions: listOptions,
+		}
+		for {
+			repos, resp, err := client.Repositories.ListByUser(ctx, username, opt)
+			if err != nil {
+				return err
+			}
+			allRepos = append(allRepos, repos...)
+			if resp.NextPage == 0 {
+				break
+			}
+			opt.Page = resp.NextPage
+		}
+	}
+
+	log.Info("Fetched repositories", "count", len(allRepos))
+	for _, repo := range allRepos {
+		log.Debug("Backing up repository", "repository", repo.GetFullName())
+	}
+
+	return nil
 }

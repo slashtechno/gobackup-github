@@ -151,7 +151,6 @@ func main() {
 	default:
 		mainMenu()
 	}
-
 }
 
 func createList(repos map[string]map[string]map[string]string) error {
@@ -159,11 +158,11 @@ func createList(repos map[string]map[string]map[string]string) error {
 	// Write the repos to a JSON file
 	if _, err := os.Stat(backupDirectory); !os.IsExist(err) {
 		// Maybe just make a file instead of a directory, for now, a directory is fine
-		if err := os.MkdirAll(backupDirectory, 0600); err != nil {
+		if err := os.MkdirAll(backupDirectory, 0o600); err != nil {
 			return err
 		}
 	}
-	file, err := os.OpenFile(filepath.Join(backupDirectory, "list.json"), os.O_CREATE|os.O_WRONLY, 0600)
+	file, err := os.OpenFile(filepath.Join(backupDirectory, "list.json"), os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		return err
 	}
@@ -403,7 +402,6 @@ func ghRequest(url, token string) (*http.Response, error) {
 		} else {
 			return nil, errors.New("something went wrong, status code is not \"200 OK\", response status code: " + response.Status)
 		}
-
 	}
 	return response, nil
 }
@@ -453,7 +451,6 @@ func setBackupDirectory(parentDirectory string) string {
 	dateToday := time.Now().Format("01-02-2006_15-04-05")
 	backupDirectory = filepath.Join(parentDirectory, "github-backup-from-"+dateToday)
 	return backupDirectory
-
 }
 
 func calculateOldestBackup(parentDirectory string) (string, error) {
@@ -495,7 +492,8 @@ func calculateOldestBackup(parentDirectory string) (string, error) {
 					"day":      day,
 					"hour":     hour,
 					"minute":   minute,
-					"second":   second})
+					"second":   second,
+				})
 
 			}
 		}
@@ -544,7 +542,6 @@ func calculateOldestBackup(parentDirectory string) (string, error) {
 }
 
 func rollBackups(parentDirectory string, maxBackups int) error {
-
 	// Check if parentDirectory is exists, if it doesn't, return nil (maybe create it?)
 	_, err := os.Stat(parentDirectory)
 	if os.IsNotExist(err) {
