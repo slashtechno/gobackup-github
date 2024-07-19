@@ -128,11 +128,12 @@ func backup(config BackupConfig) error {
 	username := user.GetLogin()
 	log.Info("Backing up user", "username", username)
 
-	// https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#list-repositories-for-a-user
-	// https://pkg.go.dev/github.com/google/go-github/v63@v63.0.0/github#RepositoriesService.ListByUser
 	// https://github.com/google/go-github?tab=readme-ov-file#pagination
 	listOptions := github.ListOptions{PerPage: 100}
-	allRepos := []*github.Repository{}
+
+	// https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#list-repositories-for-a-user
+	// https://pkg.go.dev/github.com/google/go-github/v63@v63.0.0/github#RepositoriesService.ListByUser
+	userRepos := []*github.Repository{}
 	if config.Username == "" {
 		opt := &github.RepositoryListByAuthenticatedUserOptions{
 			ListOptions: listOptions,
@@ -142,7 +143,7 @@ func backup(config BackupConfig) error {
 			if err != nil {
 				return err
 			}
-			allRepos = append(allRepos, repos...)
+			userRepos = append(userRepos, repos...)
 			if resp.NextPage == 0 {
 				break
 			}
@@ -157,7 +158,7 @@ func backup(config BackupConfig) error {
 			if err != nil {
 				return err
 			}
-			allRepos = append(allRepos, repos...)
+			userRepos = append(userRepos, repos...)
 			if resp.NextPage == 0 {
 				break
 			}
@@ -165,9 +166,35 @@ func backup(config BackupConfig) error {
 		}
 	}
 
-	log.Info("Fetched repositories", "count", len(allRepos))
+	log.Info("Fetched user's repositories", "count", len(userRepos))
+
+	// Get the starred repositories
+	// client.Activity.ListStarred(ctx, username, nil)
+	// Deal with pagination
+	opt := &github.ActivityListStarredOptions{
+		ListOptions: listOptions,
+	}
+	var starredRepos []*github.Repository
+	for {
+		repos, resp, err := client.Activity.ListStarred(ctx, username, opt)
+		if err != nil {
+			return err
+		}
+		// Get the repository from the starred repository
+		for _, repo := range repos {
+			starredRepos = append(starredRepos, repo.GetRepository())
+		}
+
+		if resp.NextPage == 0 {
+			break
+		}
+		opt.Page = resp.NextPage
+	}
+	log.Info("Fetched user's starred repositories", "count", len(starredRepos))
+
+	allRepos := append(userRepos, starredRepos...)
 	for _, repo := range allRepos {
-		log.Debug("Backing up repository", "repository", repo.GetFullName())
+		log.Debug("Got repository", "repository", repo.GetFullName())
 	}
 
 	return nil
