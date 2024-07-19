@@ -18,7 +18,7 @@ var backupCmd = &cobra.Command{
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
 		backup.StartBackup(
-			internal.Viper.GetString("usernames"),
+			internal.Viper.GetString("username"),
 			internal.Viper.GetString("token"),
 			internal.Viper.GetString("output"),
 			internal.Viper.GetString("interval"),
