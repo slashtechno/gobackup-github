@@ -1,6 +1,7 @@
 package backup
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -17,12 +18,33 @@ type BackupConfig struct {
 	Output    string
 }
 
-// func GetUsersInOrg(
-// 	org string,
-// 	client *github.Client,
-// ) ([]string, error) {
+func GetUsersInOrg(
+	orgName string,
+	client *github.Client,
+) ([]string, error) {
+	ctx := context.Background()
+	// https://pkg.go.dev/github.com/google/go-github/v63@v63.0.0/github#OrganizationsService.Get
+	var members []string
+	opt := &github.ListMembersOptions{
+		ListOptions: github.ListOptions{PerPage: 100},
+	}
+	for {
+		membersReturned, resp, err := client.Organizations.ListMembers(ctx, orgName, opt)
+		if err != nil {
+			return nil, err
+		}
+		// Get the repository from the starred repository
+		for _, m := range membersReturned {
+			members = append(members, m.GetLogin())
+		}
 
-// }
+		if resp.NextPage == 0 {
+			break
+		}
+		opt.Page = resp.NextPage
+	}
+	return members, nil
+}
 
 func Backup(config BackupConfig) error {
 	// backup
@@ -38,11 +60,19 @@ func Backup(config BackupConfig) error {
 	client := github.NewClient(rateLimiter).WithAuthToken(config.Token)
 
 	// Get users in org
-	// usersInOrg := []string{}
+	var allUsers []string
+	for _, org := range config.InOrg {
+		users, err := GetUsersInOrg(org, client)
+		if err != nil {
+			return err
+		}
+		allUsers = append(allUsers, users...)
+	}
+	allUsers = append(allUsers, config.Usernames...)
 
 	// Get repositories
 	repos := []*github.Repository{}
-	for _, username := range config.Usernames {
+	for _, username := range allUsers {
 
 		fetchConfig := &FetchConfig{
 			Client:   client,
@@ -58,16 +88,30 @@ func Backup(config BackupConfig) error {
 		repos = append(repos, fetchedRepos.User...)
 		repos = append(repos, fetchedRepos.Starred...)
 	}
+	if len(allUsers) == 0 {
+		fetchConfig := &FetchConfig{
+			Client: client,
+			Token:  config.Token,
+		}
+		fetchedRepos, err := GetRepositories(
+			fetchConfig,
+		)
+		if err != nil {
+			return err
+		}
+		repos = append(repos, fetchedRepos.User...)
+		repos = append(repos, fetchedRepos.Starred...)
+	}
 
 	// Remove duplicates
 	noDuplicates := RemoveDuplicateRepositories(repos)
-	log.Info("Got repositories", "count", len(noDuplicates))
+	log.Info("Deduplicated repositories", "count", len(noDuplicates))
 	for _, repo := range noDuplicates {
-		log.Debug("Got repository", "repository", repo.GetFullName())
 		err := cloneRepository(repo, config)
 		if err != nil {
 			return err
 		}
+		log.Info("Cloned repository", "repository", repo.GetFullName())
 
 	}
 	return nil

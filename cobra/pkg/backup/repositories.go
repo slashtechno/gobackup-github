@@ -37,7 +37,6 @@ func cloneRepository(repo *github.Repository, config BackupConfig) error {
 	if err != nil {
 		return err
 	}
-	log.Info("Cloned repository", "repository", repo.GetFullName())
 	return nil
 }
 
@@ -99,7 +98,7 @@ func GetRepositories(config *FetchConfig) (*Repositories, error) {
 		}
 	}
 
-	log.Info("Fetched user's repositories", "count", len(userRepos))
+	log.Debug("Fetched user's repositories", "count", len(userRepos), "username", username)
 
 	// Get the starred repositories
 	// client.Activity.ListStarred(ctx, username, nil)
@@ -123,7 +122,7 @@ func GetRepositories(config *FetchConfig) (*Repositories, error) {
 		}
 		opt.Page = resp.NextPage
 	}
-	log.Info("Fetched user's starred repositories", "count", len(starredRepos))
+	log.Debug("Fetched user's starred repositories", "count", len(starredRepos), "username", username)
 
 	// allRepos := append(userRepos, starredRepos...)
 	// for _, repo := range allRepos {

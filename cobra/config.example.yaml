@@ -1,0 +1,12 @@
+# Fetch the users in organizations and add it to the list of users
+in-org: []
+# Interval parsable by time.ParseDuration
+interval: ""
+# Log level: debug, info, warn, error
+log-level: info
+# Output directory
+output: backup
+# GitHub token with read access to the repositories and user
+token: ""
+# List of usernames to fetch. If neither usernames or in-org is set, it will fetch the token owner's repositories
+usernames: []
