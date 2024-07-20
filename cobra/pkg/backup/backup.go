@@ -13,33 +13,45 @@ func Backup(config BackupConfig) error {
 	// backup
 	log.Debug("Backup", "config", config)
 	// Get repositories
-	fetchedRepos, err := GetRepositories(config)
-	if err != nil {
-		return err
-	}
 	repos := []*github.Repository{}
-	repos = append(repos, fetchedRepos.User...)
-	repos = append(repos, fetchedRepos.Starred...)
+	for _, username := range config.Usernames {
+		fetchedRepos, err := GetRepositories(
+			FetchConfig{
+				Username: username,
+				Token:    config.Token,
+			},
+		)
+		if err != nil {
+			return err
+		}
+		repos = append(repos, fetchedRepos.User...)
+		repos = append(repos, fetchedRepos.Starred...)
+	}
 
 	// Remove duplicates
 	noDuplicates := RemoveDuplicateRepositories(repos)
 	log.Info("Got repositories", "count", len(noDuplicates))
 	for _, repo := range noDuplicates {
 		log.Debug("Got repository", "repository", repo.GetFullName())
+		err := cloneRepository(repo, config)
+		if err != nil {
+			return err
+		}
+
 	}
 	return nil
 }
 
 func StartBackup(
-	username string,
+	usernames []string,
 	token string,
 	output string,
 	interval string,
 ) error {
 	backupConfig := BackupConfig{
-		Username: username,
-		Token:    token,
-		Output:   output,
+		Usernames: usernames,
+		Token:     token,
+		Output:    output,
 	}
 
 	// https://gobyexample.com/tickers

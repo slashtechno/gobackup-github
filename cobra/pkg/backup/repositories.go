@@ -2,16 +2,24 @@ package backup
 
 import (
 	"context"
+	"path/filepath"
 
 	"github.com/charmbracelet/log"
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/gofri/go-github-ratelimit/github_ratelimit"
 	"github.com/google/go-github/v63/github"
 )
 
-type BackupConfig struct {
+type FetchConfig struct {
 	Username string
 	Token    string
-	Output   string
+}
+
+type BackupConfig struct {
+	Usernames []string
+	Token     string
+	Output    string
 }
 
 type Repositories struct {
@@ -19,9 +27,28 @@ type Repositories struct {
 	Starred []*github.Repository
 }
 
+func cloneRepository(repo *github.Repository, config BackupConfig) error {
+	// Set the output directory
+	outputDirectory := filepath.Join(config.Output, repo.GetFullName())
+	// Clone the repository
+	_, err := git.PlainClone(outputDirectory, false, &git.CloneOptions{
+		URL: repo.GetCloneURL(),
+		Auth: &http.BasicAuth{
+			// Username: config.Username,
+			Username: config.Token,
+			Password: config.Token,
+		},
+	})
+	if err != nil {
+		return err
+	}
+	log.Info("Cloned repository", "repository", repo.GetFullName())
+	return nil
+}
+
 // Get both starred and user repositories, remove duplicates, and return them as a Repositories struct.
 // Takes a BackupConfig struct as an argument. BackupConfig requires a username and token but not output.
-func GetRepositories(config BackupConfig) (*Repositories, error) {
+func GetRepositories(config FetchConfig) (*Repositories, error) {
 	// Make an HTTP client that waits if the rate limit is exceeded
 	rateLimiter, err := github_ratelimit.NewRateLimitWaiterClient(nil)
 	if err != nil {
@@ -40,7 +67,7 @@ func GetRepositories(config BackupConfig) (*Repositories, error) {
 		return nil, err
 	}
 	username := user.GetLogin()
-	log.Info("Backing up user", "username", username)
+	log.Info("Fetching repositories for user", "username", username)
 
 	// https://github.com/google/go-github?tab=readme-ov-file#pagination
 	listOptions := github.ListOptions{PerPage: 100}
@@ -122,11 +149,19 @@ func GetRepositories(config BackupConfig) (*Repositories, error) {
 func RemoveDuplicateRepositories(repositories []*github.Repository,
 ) []*github.Repository {
 	var noDuplicates []*github.Repository
+
 	for _, repo := range repositories {
+
+		// FOR DEBUGGING
+		if repo.GetFullName() == "yourselfhosted/slash" {
+			log.Debug("Found slash")
+		}
+
 		found := false
 		for _, added := range noDuplicates {
 			if repo.GetFullName() == added.GetFullName() {
 				found = true
+				log.Debug("Found duplicate", "repository", repo.GetFullName())
 				break
 			}
 		}

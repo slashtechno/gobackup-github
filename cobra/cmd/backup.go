@@ -18,7 +18,7 @@ var backupCmd = &cobra.Command{
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
 		backup.StartBackup(
-			internal.Viper.GetString("username"),
+			internal.Viper.GetStringSlice("usernames"),
 			internal.Viper.GetString("token"),
 			internal.Viper.GetString("output"),
 			internal.Viper.GetString("interval"),
@@ -29,9 +29,15 @@ var backupCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(backupCmd)
 
-	backupCmd.PersistentFlags().StringP("username", "u", "", "GitHub username to backup. Leave blank to backup the authenticated user")
-	internal.Viper.BindPFlag("username", backupCmd.PersistentFlags().Lookup("username"))
-	internal.Viper.SetDefault("username", "")
+	// backupCmd.PersistentFlags().StringP("username", "u", "", "GitHub username to backup. Leave blank to backup the authenticated user")
+	// internal.Viper.BindPFlag("username", backupCmd.PersistentFlags().Lookup("username"))
+	// internal.Viper.SetDefault("username", "")
+
+	backupCmd.PersistentFlags().StringSliceP("username", "u", []string{}, "GitHub username to backup. Leave blank to backup the authenticated user")
+	internal.Viper.BindPFlag("usernames", backupCmd.PersistentFlags().Lookup("username"))
+	internal.Viper.SetDefault("usernames",
+		[]string{},
+	)
 
 	backupCmd.PersistentFlags().StringP("token", "t", "", "GitHub token")
 	internal.Viper.BindPFlag("token", backupCmd.PersistentFlags().Lookup("token"))
