@@ -4,8 +4,8 @@ Copyright © 2024 Angad Behl
 package cmd
 
 import (
-	"github.com/slashtechno/gobackup-github/cobra/internal"
-	"github.com/slashtechno/gobackup-github/cobra/pkg/backup"
+	"github.com/slashtechno/gobackup-github/internal"
+	"github.com/slashtechno/gobackup-github/pkg/backup"
 	"github.com/spf13/cobra"
 )
 

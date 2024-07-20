@@ -6,8 +6,8 @@ package cmd
 import (
 	"os"
 
-	"github.com/slashtechno/gobackup-github/cobra/internal"
-	"github.com/slashtechno/gobackup-github/cobra/pkg/utils"
+	"github.com/slashtechno/gobackup-github/internal"
+	"github.com/slashtechno/gobackup-github/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
