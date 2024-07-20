@@ -19,6 +19,7 @@ var backupCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		backup.StartBackup(
 			internal.Viper.GetStringSlice("usernames"),
+			internal.Viper.GetStringSlice("in-org"),
 			internal.Viper.GetString("token"),
 			internal.Viper.GetString("output"),
 			internal.Viper.GetString("interval"),
@@ -38,6 +39,11 @@ func init() {
 	internal.Viper.SetDefault("usernames",
 		[]string{},
 	)
+
+	// Allow for the users in an organization to be fetched and backed up
+	backupCmd.PersistentFlags().StringSlice("in-org", []string{}, "Get users from an organization")
+	internal.Viper.BindPFlag("in-org", backupCmd.PersistentFlags().Lookup("in-org"))
+	internal.Viper.SetDefault("in-org", []string{})
 
 	backupCmd.PersistentFlags().StringP("token", "t", "", "GitHub token")
 	internal.Viper.BindPFlag("token", backupCmd.PersistentFlags().Lookup("token"))

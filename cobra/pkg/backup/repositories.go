@@ -2,24 +2,19 @@ package backup
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 
 	"github.com/charmbracelet/log"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
-	"github.com/gofri/go-github-ratelimit/github_ratelimit"
 	"github.com/google/go-github/v63/github"
 )
 
 type FetchConfig struct {
+	Client   *github.Client
 	Username string
 	Token    string
-}
-
-type BackupConfig struct {
-	Usernames []string
-	Token     string
-	Output    string
 }
 
 type Repositories struct {
@@ -48,16 +43,13 @@ func cloneRepository(repo *github.Repository, config BackupConfig) error {
 
 // Get both starred and user repositories, remove duplicates, and return them as a Repositories struct.
 // Takes a BackupConfig struct as an argument. BackupConfig requires a username and token but not output.
-func GetRepositories(config FetchConfig) (*Repositories, error) {
-	// Make an HTTP client that waits if the rate limit is exceeded
-	rateLimiter, err := github_ratelimit.NewRateLimitWaiterClient(nil)
-	if err != nil {
-		return nil, err
-	}
+func GetRepositories(config *FetchConfig) (*Repositories, error) {
 
-	// .WithEnterpriseURL could probably be used for something like Gitea
-	client := github.NewClient(rateLimiter).WithAuthToken(config.Token)
 	ctx := context.Background()
+	if config.Client == nil {
+		return nil, fmt.Errorf("client is nil")
+	}
+	client := config.Client
 
 	// Get the user
 	// https://pkg.go.dev/github.com/google/go-github/v63/github#User
