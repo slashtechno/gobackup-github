@@ -67,7 +67,7 @@ func GetRepositories(config *FetchConfig) (*Repositories, error) {
 
 	// https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#list-repositories-for-a-user
 	// https://pkg.go.dev/github.com/google/go-github/v63@v63.0.0/github#RepositoriesService.ListByUser
-	userRepos := []*github.Repository{}
+	var userRepos []*github.Repository
 	if config.Username == "" {
 		opt := &github.RepositoryListByAuthenticatedUserOptions{
 			ListOptions: listOptions,

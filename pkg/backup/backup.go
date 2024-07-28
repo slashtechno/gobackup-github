@@ -73,7 +73,7 @@ func Backup(config BackupConfig) error {
 	allUsers = append(allUsers, config.Usernames...)
 
 	// Get repositories
-	repos := []*github.Repository{}
+	var repos []*github.Repository
 	fetchConfig := &FetchConfig{
 		GetStars: config.BackupStars,
 		Client:   client,

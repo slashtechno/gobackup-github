@@ -53,9 +53,9 @@ func initConfig() {
 			}
 			log.Fatal("Failed to read config file. Created a config file with default values. Please edit the file and run the command again.", "path", cmd.ConfigFile)
 
-		} else {
-			log.Fatal("Failed to read configurationfile:", "error", err)
 		}
+		log.Fatal("Failed to read configurationfile:", "error", err)
+
 	}
 }
 

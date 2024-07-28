@@ -31,7 +31,7 @@ func EmptyDir(pathToDir string) error {
 	// Remove all files in the directory
 	os.RemoveAll(pathToDir)
 	// Recreate the directory
-	err := os.MkdirAll(pathToDir, 0755)
+	err := os.MkdirAll(pathToDir, 0644)
 	if err != nil {
 		return err
 	}
