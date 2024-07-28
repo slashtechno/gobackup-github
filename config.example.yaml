@@ -2,7 +2,7 @@
 backup-stars: false
 # Fetch the users in organizations and add it to the list of users
 in-org: []
-# Interval parsable by time.ParseDuration
+# Interval parsable by time.ParseDuration. This is used when running `gobackup-github backup continuous`
 interval: ""
 # Log level: debug, info, warn, error
 log-level: info

@@ -17,7 +17,7 @@ import (
 func init() {
 	// Load .env file
 	if err := godotenv.Load(); err != nil {
-		log.Warn("Failed to load .env file", "error", err)
+		log.Info("Failed to load .env file", "error", err)
 	}
 	cobra.OnInitialize(initConfig)
 }
