@@ -2,13 +2,14 @@ package backup
 
 import (
 	"context"
+	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/charmbracelet/log"
 	"github.com/gofri/go-github-ratelimit/github_ratelimit"
 	"github.com/google/go-github/v63/github"
-	"github.com/slashtechno/gobackup-github/internal"
+	"github.com/slashtechno/gobackup-github/pkg/utils"
 )
 
 type BackupConfig struct {
@@ -81,7 +82,7 @@ func Backup(config BackupConfig) error {
 	for _, username := range allUsers {
 
 		fetchConfig.Username = username
-		
+
 		fetchedRepos, err := GetRepositories(
 			fetchConfig,
 		)
@@ -126,13 +127,25 @@ func StartBackup(
 	if interval != "" {
 		log.Info("Starting backup with interval", "interval", interval)
 
-		ticker := time.NewTicker(internal.Viper.GetDuration("interval"))
+		log.Info("Emptying output directory", "output", backupConfig.Output)
+		cleanedPath := filepath.Clean(backupConfig.Output)
+		err := utils.EmptyDir(cleanedPath)
+		if err != nil {
+			return err
+		}
+
+		duration, err := time.ParseDuration(interval)
+		if err != nil {
+			return err
+		}
+
+		ticker := time.NewTicker(duration)
 		defer ticker.Stop()
 		var wg sync.WaitGroup
 		wg.Add(1)
 
 		// Run backup on start
-		err := Backup(backupConfig)
+		err = Backup(backupConfig)
 		if err != nil {
 			return err
 		}

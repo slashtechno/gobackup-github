@@ -11,9 +11,9 @@ import (
 
 // backupCmd represents the backup command
 var backupCmd = &cobra.Command{
-	Use:   "backup",
+	Use:   "backup [flags]",
 	Short: "Backup a GitHub user",
-	Long: `Backup either the authenticated user or a specified GitHub user.
+	Long: `Backup either the authenticated user or specified user(s). All users in specified organization(s) can also be backed up.
 	Backing up the authenticated user clones private repositories as well.
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -25,7 +25,8 @@ var backupCmd = &cobra.Command{
 				Token:       internal.Viper.GetString("token"),
 				Output:      internal.Viper.GetString("output"),
 			},
-			internal.Viper.GetString("interval"),
+			// Pass an empty interval as this is a one-time backup
+			"",
 		)
 	},
 }
@@ -61,6 +62,4 @@ func init() {
 	internal.Viper.BindPFlag("backup-stars", backupCmd.PersistentFlags().Lookup("stars"))
 	internal.Viper.SetDefault("backup-stars", false)
 
-	backupCmd.Flags().StringP("interval", "i", "", "Interval to check for new content")
-	internal.Viper.BindPFlag("interval", backupCmd.Flags().Lookup("interval"))
 }
