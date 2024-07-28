@@ -18,10 +18,13 @@ var backupCmd = &cobra.Command{
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
 		backup.StartBackup(
-			internal.Viper.GetStringSlice("usernames"),
-			internal.Viper.GetStringSlice("in-org"),
-			internal.Viper.GetString("token"),
-			internal.Viper.GetString("output"),
+			backup.BackupConfig{
+				Usernames:   internal.Viper.GetStringSlice("usernames"),
+				InOrg:       internal.Viper.GetStringSlice("in-org"),
+				BackupStars: internal.Viper.GetBool("stars"),
+				Token:       internal.Viper.GetString("token"),
+				Output:      internal.Viper.GetString("output"),
+			},
 			internal.Viper.GetString("interval"),
 		)
 	},
@@ -52,6 +55,11 @@ func init() {
 	backupCmd.PersistentFlags().StringP("output", "o", "", "Output directory")
 	internal.Viper.BindPFlag("output", backupCmd.PersistentFlags().Lookup("output"))
 	internal.Viper.SetDefault("output", "backup")
+
+	// Optionally, backup stars as well
+	backupCmd.PersistentFlags().BoolP("backup-stars", "s", false, "Backup starred repositories")
+	internal.Viper.BindPFlag("backup-stars", backupCmd.PersistentFlags().Lookup("stars"))
+	internal.Viper.SetDefault("backup-stars", false)
 
 	backupCmd.Flags().StringP("interval", "i", "", "Interval to check for new content")
 	internal.Viper.BindPFlag("interval", backupCmd.Flags().Lookup("interval"))

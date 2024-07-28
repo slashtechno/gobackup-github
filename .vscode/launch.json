@@ -6,7 +6,7 @@
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/cobra",
+            "program": "${workspaceFolder}",
             "args": ["backup"],
             "console": "integratedTerminal"
         },
