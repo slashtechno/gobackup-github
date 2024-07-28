@@ -32,8 +32,8 @@ var continuousCmd = &cobra.Command{
 func init() {
 	backupCmd.AddCommand(continuousCmd)
 
-	backupCmd.Flags().StringP("interval", "i", "", "Interval to check for new content")
-	internal.Viper.BindPFlag("interval", backupCmd.Flags().Lookup("interval"))
+	continuousCmd.Flags().StringP("interval", "i", "", "Interval to check for new content")
+	internal.Viper.BindPFlag("interval", continuousCmd.Flags().Lookup("interval"))
 	internal.Viper.SetDefault("interval", "")
 
 }

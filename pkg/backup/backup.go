@@ -142,24 +142,41 @@ func StartBackup(
 		ticker := time.NewTicker(duration)
 		defer ticker.Stop()
 		var wg sync.WaitGroup
-		wg.Add(1)
 
 		// Run backup on start
 		err = Backup(backupConfig)
 		if err != nil {
 			return err
 		}
+		errChan := make(chan error)
 		go func() {
+			defer close(errChan)
+			// The backup will not be concurrent if the backup process takes longer than the interval
 			for range ticker.C {
+				wg.Add(1)
+				log.Info("Emptying output directory", "output", backupConfig.Output)
+				cleanedPath := filepath.Clean(backupConfig.Output)
+				err := utils.EmptyDir(cleanedPath)
+				if err != nil {
+					errChan <- err
+					return
+				}
 				err = Backup(backupConfig)
 				if err != nil {
-					// Don't stop the backup process if one fails
-					log.Error("Failed to backup", "error", err)
-					continue
+					errChan <- err
+					return
 				}
+				wg.Done()
 			}
+
 		}()
 		wg.Wait()
+		// Handle errors from the goroutine
+		for err := range errChan {
+			if err != nil {
+				return err
+			}
+		}
 	}
 	log.Info("Starting backup")
 	err := Backup(backupConfig)

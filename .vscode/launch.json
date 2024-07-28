@@ -10,5 +10,14 @@
             "args": ["backup"],
             "console": "integratedTerminal"
         },
+        {
+            "name": "Continuous 5s",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": ["backup", "continuous", "--interval", "5s"],
+            "console": "integratedTerminal"
+        },
     ],
 }
