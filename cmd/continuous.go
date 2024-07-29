@@ -22,6 +22,7 @@ var continuousCmd = &cobra.Command{
 				BackupStars: internal.Viper.GetBool("stars"),
 				Token:       internal.Viper.GetString("token"),
 				Output:      internal.Viper.GetString("output"),
+				RunType:     internal.Viper.GetString("run-type"),
 			},
 			// Pass an empty interval as this is a one-time backup
 			internal.Viper.GetString("interval"),

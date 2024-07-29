@@ -2,6 +2,9 @@ package backup
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -18,6 +21,8 @@ type BackupConfig struct {
 	BackupStars bool
 	Token       string
 	Output      string
+	// RunType can be `clone`, `fetch`, or `dry-run`
+	RunType string
 }
 
 func GetUsersInOrg(
@@ -49,9 +54,6 @@ func GetUsersInOrg(
 }
 
 func Backup(config BackupConfig) error {
-	// backup
-	log.Debug("Backup", "config", config)
-
 	// Make a client
 	// Make an HTTP client that waits if the rate limit is exceeded
 	rateLimiter, err := github_ratelimit.NewRateLimitWaiterClient(nil)
@@ -106,13 +108,46 @@ func Backup(config BackupConfig) error {
 	// Remove duplicates
 	noDuplicates := RemoveDuplicateRepositories(repos)
 	log.Info("Deduplicated repositories", "count", len(noDuplicates))
-	for _, repo := range noDuplicates {
-		err := cloneRepository(repo, config)
+	if config.RunType == "clone" {
+		log.Info("Cloning repositories")
+		for _, repo := range noDuplicates {
+			err := cloneRepository(repo, config)
+			if err != nil {
+				return err
+			}
+			log.Info("Cloned repository", "repository", repo.GetFullName())
+
+		}
+	} else if config.RunType == "fetch" {
+		var output string
+		log.Info("Fetching repositories")
+		if filepath.Ext(config.Output) != ".json" {
+			output = filepath.Join(config.Output, "repositories.json")
+			log.Warn("Output file should be a JSON file. Attempting to use `repositories.json` in the output directory", "path", output)
+		} else {
+			output = config.Output
+			log.Debug("Using specified output file", "path", output)
+		}
+
+		// Marshal the repositories to JSON
+		repoJson, err := json.MarshalIndent(noDuplicates, "", "  ")
 		if err != nil {
 			return err
 		}
-		log.Info("Cloned repository", "repository", repo.GetFullName())
-
+		err = os.WriteFile(output, repoJson, 0644)
+		if err != nil {
+			return err
+		}
+		log.Info("Fetched and saved list of repositories", "path", output)
+	} else if config.RunType == "dry-run" {
+		repoJson, err := json.MarshalIndent(noDuplicates, "", "  ")
+		if err != nil {
+			return err
+		}
+		log.Info("Dry run - printing repositories to console")
+		fmt.Println(string(repoJson))
+	} else {
+		return fmt.Errorf("invalid run type: %s; must be one of `clone`, `fetch`, or `dry-run`", config.RunType)
 	}
 	return nil
 }

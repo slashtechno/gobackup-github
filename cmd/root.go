@@ -19,9 +19,9 @@ var rootCmd = &cobra.Command{
 		utils.SetupLogger(internal.Viper.GetString("log-level"))
 		return nil
 	},
-	// Use:   "cobra",
-	Short: "A tool to backup GitHub repos, stars, and gists",
-	// Long:  ``,
+	Use:   "gobackup-github backup [flags] [subcommand]",
+	Short: "A tool to backup GitHub repos and/or stars",
+	Long:  `A tool to backup GitHub repos and/or stars`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },

@@ -5,8 +5,8 @@ Go program that utilizes the Github API to backup all a user's repositories, inc
 ### Setup  
 1. Create a Github personal access token with the following scopes:  `read:user, repo`  
 2. Either download a binary for your system from releases, or build the program and add it to your PATH with `go install`.
-3. Copy `config.example.yaml` to `config.yaml` and fill in the required fields
-    - Alternatively, you can use command line flags to specify the token and output directory. Use the `help` command or the `--help` flag for more information.
+3. Copy `config.example.yaml` to `config.yaml` and fill in the fields.
+    - In addition, command line flags can be used to specify configuration options. Use the `help` command or the `--help` flag for more information.
 4. Run the program with `gobackup-github backup` 
     - To perform a rolling backup, run `gobackup-github backup continuous`
 

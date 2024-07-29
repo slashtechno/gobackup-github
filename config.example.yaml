@@ -12,3 +12,5 @@ output: backup
 token: ""
 # List of usernames to fetch. If neither usernames or in-org is set, it will fetch the token owner's repositories
 usernames: []
+# `clone` (clone the repositories), `fetch` (fetch the repositories and write to output if it ends in .json or `repositories.json` in output), `dry-run` (fetch the repositories and print the output)
+run-type: clone

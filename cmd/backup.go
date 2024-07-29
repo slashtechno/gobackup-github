@@ -24,6 +24,7 @@ var backupCmd = &cobra.Command{
 				BackupStars: internal.Viper.GetBool("stars"),
 				Token:       internal.Viper.GetString("token"),
 				Output:      internal.Viper.GetString("output"),
+				RunType:     internal.Viper.GetString("run-type"),
 			},
 			// Pass an empty interval as this is a one-time backup
 			"",
@@ -61,5 +62,9 @@ func init() {
 	backupCmd.PersistentFlags().BoolP("backup-stars", "s", false, "Backup starred repositories")
 	internal.Viper.BindPFlag("backup-stars", backupCmd.PersistentFlags().Lookup("stars"))
 	internal.Viper.SetDefault("backup-stars", false)
+
+	backupCmd.PersistentFlags().String("run-type", "", "`Type of backup: clone` (clone the repositories), `fetch` (fetch the repositories and write to output if it ends in .json or `repositories.json` in output), `dry-run` (fetch the repositories and print the output). Default is `clone`")
+	internal.Viper.BindPFlag("run-type", backupCmd.PersistentFlags().Lookup("run-type"))
+	internal.Viper.SetDefault("run-type", "clone")
 
 }
