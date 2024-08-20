@@ -3,7 +3,9 @@ backup-stars: false
 # Fetch the users in organizations and add it to the list of users
 in-org: []
 # Interval parsable by time.ParseDuration. This is used when running `gobackup-github backup continuous`
-interval: ""
+# If explicitly set to null, it will run once and exit as if `gobackup-github backup` was run
+# If not specified, it will default to 24h (24 hours)
+interval: "24h"
 # Log level: debug, info, warn, error
 log-level: info
 # Output directory

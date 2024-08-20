@@ -4,6 +4,7 @@ Copyright © 2024 Angad Behl
 package cmd
 
 import (
+	"github.com/charmbracelet/log"
 	"github.com/slashtechno/gobackup-github/internal"
 	"github.com/slashtechno/gobackup-github/pkg/backup"
 	"github.com/spf13/cobra"
@@ -17,7 +18,7 @@ var backupCmd = &cobra.Command{
 	Backing up the authenticated user clones private repositories as well.
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
-		backup.StartBackup(
+		err := backup.StartBackup(
 			backup.BackupConfig{
 				Usernames:   internal.Viper.GetStringSlice("usernames"),
 				InOrg:       internal.Viper.GetStringSlice("in-org"),
@@ -29,6 +30,9 @@ var backupCmd = &cobra.Command{
 			// Pass an empty interval as this is a one-time backup
 			"",
 		)
+		if err != nil {
+			log.Error("Backup failed", "err", err)
+		}
 	},
 }
 

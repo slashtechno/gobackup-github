@@ -1,0 +1,11 @@
+services:
+  gobackup-github:
+    image: ghcr.io/slashtechno/gobackup-github:latest
+    container_name: gobackup-github
+    restart: unless-stopped
+    volumes:
+      - ./config.yaml:/config.yaml
+      - ./backup:/backups
+    # Remove the command to run the backup once
+    # Alternatively, explicitly set the interval to null
+    command: continuous
