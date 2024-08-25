@@ -115,15 +115,16 @@ func Backup(config BackupConfig) error {
 			if err != nil {
 				return err
 			}
-			log.Info("Cloned repository", "repository", repo.GetFullName())
+			log.Debug("Cloned repository", "repository", repo.GetFullName())
 
 		}
+		log.Info("Cloned repositories")
 	} else if config.RunType == "fetch" {
 		var output string
 		log.Info("Fetching repositories")
 		if filepath.Ext(config.Output) != ".json" {
 			output = filepath.Join(config.Output, "repositories.json")
-			log.Warn("Output file should be a JSON file. Attempting to use `repositories.json` in the output directory", "path", output)
+			log.Info("Output file should be a JSON file. Attempting to use `repositories.json` in the output directory", "path", output)
 		} else {
 			output = config.Output
 			log.Debug("Using specified output file", "path", output)

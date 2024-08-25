@@ -3,6 +3,7 @@ package utils
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -44,6 +45,10 @@ func EmptyDir(pathToDir string) error {
 // It will remove all but the most recent n-1 backups (directories) in the directory. The backup directories are expected to be named in the format `backup-<timestamp>`.
 // After making sure the directory has the correct number of backups, it will return the path to what the next backup directory should be named.
 func RollingDir(pathToDir string, maxBackups int) (string, error) {
+	// https://stackoverflow.com/questions/42217308/go-time-format-how-to-understand-meaning-of-2006-01-02-layout/42217483#42217483
+	// 2006: year; 01: month; 02: day; 15: hour; 04: minute; 05: second
+	timeFormat := "2006-01-02-15-04-05"
+
 	// Get all directories in the path
 	dirs := []string{}
 
@@ -60,16 +65,65 @@ func RollingDir(pathToDir string, maxBackups int) (string, error) {
 		}
 	}
 
-	log.Info("Found directories", "directories", dirs)
+	log.Debug("Found directories", "directories", dirs)
+
+	overLimit := (len(dirs) - maxBackups) + 1
+
+	for i := 0; i < overLimit; i++ {
+		err := RemoveOldestDir(&dirs, pathToDir, timeFormat)
+		if err != nil {
+			return "", err
+		}
+	}
 
 	// for now, just return the CreateTimeBasedDir even if there are too many directories
-	dirPath, err := CreateTimeBasedDir(pathToDir)
+	dirPath, err := CreateTimeBasedDir(pathToDir, timeFormat)
 	if err != nil {
 		return "", err
 	}
 
 	return dirPath, nil
 
+}
+
+func RemoveOldestDir(dirNames *[]string, parentDir string, timeFormat string) error {
+	// Sort the directories by time
+	// https://stackoverflow.com/questions/23121026/how-to-sort-by-time-time/77235904#77235904
+
+	timestampSort := func(i, j string) int {
+		timeI, err := time.Parse(timeFormat, i)
+		if err != nil {
+			return 0
+		}
+		timeJ, err := time.Parse(timeFormat, j)
+		if err != nil {
+			return 0
+		}
+
+		return timeI.Compare(timeJ)
+	}
+	slices.SortFunc(*dirNames, timestampSort)
+
+	// Remove the oldest directory
+	toRemove := filepath.Join(parentDir, (*dirNames)[0])
+	err := os.RemoveAll(toRemove)
+	log.Info("Removed oldest backup", "path", toRemove)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Function to make a subdirectory in the parent directory with the current time
+func CreateTimeBasedDir(parentDir string, timeFormat string) (string, error) {
+	newPath := filepath.Join(parentDir, time.Now().Format(timeFormat))
+	err := os.MkdirAll(newPath, 0644)
+
+	if err != nil {
+		return "", err
+	}
+	return newPath, nil
 }
 
 // If a directory returns true, if it isn't a directory it returns false
@@ -81,17 +135,4 @@ func IsDirectory(path string) (bool, error) {
 		return false, err
 	}
 	return fileInfo.IsDir(), err
-}
-
-// Function to make a subdirectory in the parent directory with the current time
-func CreateTimeBasedDir(parentDir string) (string, error) {
-	// https://stackoverflow.com/questions/42217308/go-time-format-how-to-understand-meaning-of-2006-01-02-layout/42217483#42217483
-	// 2006: year; 01: month; 02: day; 15: hour; 04: minute; 05: second
-	newPath := filepath.Join(parentDir, time.Now().Format("2006-01-02-15-04-05"))
-	err := os.MkdirAll(newPath, 0644)
-
-	if err != nil {
-		return "", err
-	}
-	return newPath, nil
 }

@@ -17,7 +17,7 @@
             "mode": "auto",
             "program": "${workspaceFolder}",
             // "args": ["backup", "continuous", "--run-type", "${input:runType}", "--interval", "5s", "--max-backups", "5"],
-            "args": ["backup", "continuous", "--run-type", "${input:runType}", "--interval", "5s"],
+            "args": ["backup", "continuous", "--run-type", "${input:runType}", "--interval", "${input:interval}", "--max-backups", "${input:maxBackups}"],
             "console": "integratedTerminal"
         },
     ],
@@ -29,5 +29,17 @@
             "options": ["clone", "fetch", "dry-run"],
             "default": "full"
         },
+        {
+            "id": "interval",
+            "type": "promptString",
+            "description": "Enter the interval for continuous backup",
+            "default": "5s"
+        },
+        {
+            "id": "maxBackups",
+            "type": "promptString",
+            "description": "Enter the maximum number of backups to keep",
+            "default": "2"
+        }
     ]
 }
