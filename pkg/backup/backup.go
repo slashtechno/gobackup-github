@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/schollz/progressbar/v3"
+
 	"github.com/charmbracelet/log"
 	"github.com/gofri/go-github-ratelimit/github_ratelimit"
 	"github.com/google/go-github/v63/github"
@@ -110,15 +112,15 @@ func Backup(config BackupConfig) error {
 	log.Info("Deduplicated repositories", "count", len(noDuplicates))
 	if config.RunType == "clone" {
 		log.Info("Cloning repositories")
+		bar := progressbar.Default(int64(len(noDuplicates)))
 		for _, repo := range noDuplicates {
 			err := cloneRepository(repo, config)
 			if err != nil {
 				return err
 			}
 			log.Debug("Cloned repository", "repository", repo.GetFullName())
-
+			bar.Add(1)
 		}
-		log.Info("Cloned repositories")
 	} else if config.RunType == "fetch" {
 		var output string
 		log.Info("Fetching repositories")
