@@ -163,12 +163,19 @@ func StartBackup(
 	if interval != "" {
 		log.Info("Starting backup with interval", "interval", interval)
 
-		log.Info("Emptying output directory", "output", backupConfig.Output)
-		cleanedPath := filepath.Clean(backupConfig.Output)
-		err := utils.EmptyDir(cleanedPath)
-		if err != nil {
-			return err
+		parentDir := filepath.Clean(backupConfig.Output)
+
+		if maxBackups < 1 {
+			log.Warn("maxBackups must be greater than 0. Setting to 1", "maxBackups", maxBackups)
+			maxBackups = 1
 		}
+
+		// log.Info("Emptying output directory", "output", backupConfig.Output)
+		// cleanedPath := filepath.Clean(backupConfig.Output)
+		// err := utils.EmptyDir(cleanedPath)
+		// if err != nil {
+		// 	return err
+		// }
 
 		duration, err := time.ParseDuration(interval)
 		if err != nil {
@@ -180,6 +187,10 @@ func StartBackup(
 		var wg sync.WaitGroup
 
 		// Run backup on start
+		backupConfig.Output, err = utils.CreateTimeBasedDir(parentDir)
+		if err != nil {
+			return err
+		}
 		err = Backup(backupConfig)
 		if err != nil {
 			return err
@@ -190,9 +201,16 @@ func StartBackup(
 			// The backup will not be concurrent if the backup process takes longer than the interval
 			for range ticker.C {
 				wg.Add(1)
-				log.Info("Emptying output directory", "output", backupConfig.Output)
-				cleanedPath := filepath.Clean(backupConfig.Output)
-				err := utils.EmptyDir(cleanedPath)
+
+				// log.Info("Emptying output directory", "output", backupConfig.Output)
+				// cleanedPath := filepath.Clean(backupConfig.Output)
+				// err := utils.EmptyDir(cleanedPath)
+				// if err != nil {
+				// 	errChan <- err
+				// 	return
+				// }
+
+				backupConfig.Output, err = utils.CreateTimeBasedDir(parentDir)
 				if err != nil {
 					errChan <- err
 					return
@@ -202,6 +220,7 @@ func StartBackup(
 					errChan <- err
 					return
 				}
+
 				wg.Done()
 			}
 

@@ -14,7 +14,7 @@ import (
 var continuousCmd = &cobra.Command{
 	Use:   "continuous --interval INTERVAL",
 	Short: "Start a rolling backup that backs up repositories at a set interval",
-	Long:  `Start a rolling backup that backs up repositories at a set interval. The output directory will be emptied each time the backup is run.`,
+	Long:  `Start a rolling backup that backs up repositories at a set interval.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		err := backup.StartBackup(
 			backup.BackupConfig{
