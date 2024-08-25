@@ -187,7 +187,7 @@ func StartBackup(
 		var wg sync.WaitGroup
 
 		// Run backup on start
-		backupConfig.Output, err = utils.CreateTimeBasedDir(parentDir)
+		backupConfig.Output, err = utils.RollingDir(parentDir, maxBackups)
 		if err != nil {
 			return err
 		}
@@ -210,7 +210,7 @@ func StartBackup(
 				// 	return
 				// }
 
-				backupConfig.Output, err = utils.CreateTimeBasedDir(parentDir)
+				backupConfig.Output, err = utils.RollingDir(parentDir, maxBackups)
 				if err != nil {
 					errChan <- err
 					return

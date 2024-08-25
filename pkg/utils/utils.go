@@ -45,13 +45,37 @@ func EmptyDir(pathToDir string) error {
 // After making sure the directory has the correct number of backups, it will return the path to what the next backup directory should be named.
 func RollingDir(pathToDir string, maxBackups int) (string, error) {
 	// Get all directories in the path
+	dirs := []string{}
 
-	return "", nil
+	filesAndDirs, err := os.ReadDir(pathToDir)
+	if err != nil {
+		return "", err
+	}
+
+	for _, fileAndDir := range filesAndDirs {
+		if fileAndDir.IsDir() {
+			dirs = append(dirs, fileAndDir.Name())
+		} else {
+			log.Warn("Found a file in the backup directory, ignoring", "file", fileAndDir.Name())
+		}
+	}
+
+	log.Info("Found directories", "directories", dirs)
+
+	// for now, just return the CreateTimeBasedDir even if there are too many directories
+	dirPath, err := CreateTimeBasedDir(pathToDir)
+	if err != nil {
+		return "", err
+	}
+
+	return dirPath, nil
+
 }
 
-// https://stackoverflow.com/questions/8824571/golang-determining-whether-file-points-to-file-or-directory/25567952#25567952
-
+// If a directory returns true, if it isn't a directory it returns false
+// If an error occurs, like the path not existing, it returns the error from os.Stat.
 func IsDirectory(path string) (bool, error) {
+	// https://stackoverflow.com/questions/8824571/golang-determining-whether-file-points-to-file-or-directory/25567952#25567952
 	fileInfo, err := os.Stat(path)
 	if err != nil {
 		return false, err
