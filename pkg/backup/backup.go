@@ -12,6 +12,7 @@ import (
 	"github.com/schollz/progressbar/v3"
 
 	"github.com/charmbracelet/log"
+	"github.com/go-resty/resty/v2"
 	"github.com/gofri/go-github-ratelimit/github_ratelimit"
 	"github.com/google/go-github/v63/github"
 	"github.com/slashtechno/gobackup-github/pkg/utils"
@@ -25,6 +26,7 @@ type BackupConfig struct {
 	Output      string
 	// RunType can be `clone`, `fetch`, or `dry-run`
 	RunType string
+	NtfyUrl string
 }
 
 func GetUsersInOrg(
@@ -147,10 +149,18 @@ func Backup(config BackupConfig) error {
 		if err != nil {
 			return err
 		}
-		log.Info("Dry run - printing repositories to console")
+		log.Debug("Dry run - printing repositories to console")
 		fmt.Println(string(repoJson))
 	} else {
 		return fmt.Errorf("invalid run type: %s; must be one of `clone`, `fetch`, or `dry-run`", config.RunType)
+	}
+
+	if config.NtfyUrl != "" {
+		log.Info("Sending notification", "url", config.NtfyUrl)
+		_, err := resty.New().R().SetHeader("Tags", "tada").SetBody("Backup complete").Post(config.NtfyUrl)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

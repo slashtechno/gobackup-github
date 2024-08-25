@@ -24,6 +24,7 @@ var continuousCmd = &cobra.Command{
 				Token:       internal.Viper.GetString("token"),
 				Output:      internal.Viper.GetString("output"),
 				RunType:     internal.Viper.GetString("run-type"),
+				NtfyUrl:     internal.Viper.GetString("ntfy-url"),
 			},
 			internal.Viper.GetString("interval"),
 			internal.Viper.GetInt("max-backups"),

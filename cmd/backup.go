@@ -8,6 +8,7 @@ import (
 	"github.com/slashtechno/gobackup-github/internal"
 	"github.com/slashtechno/gobackup-github/pkg/backup"
 	"github.com/spf13/cobra"
+	
 )
 
 // backupCmd represents the backup command
@@ -26,6 +27,7 @@ var backupCmd = &cobra.Command{
 				Token:       internal.Viper.GetString("token"),
 				Output:      internal.Viper.GetString("output"),
 				RunType:     internal.Viper.GetString("run-type"),
+				NtfyUrl:     internal.Viper.GetString("ntfy-url"),
 			},
 			// Pass an empty interval as this is a one-time backup
 			"",
@@ -71,5 +73,9 @@ func init() {
 	backupCmd.PersistentFlags().String("run-type", "", "`Type of backup: clone` (clone the repositories), `fetch` (fetch the repositories and write to output if it ends in .json or `repositories.json` in output), `dry-run` (fetch the repositories and print the output). Default is `clone`")
 	internal.Viper.BindPFlag("run-type", backupCmd.PersistentFlags().Lookup("run-type"))
 	internal.Viper.SetDefault("run-type", "clone")
+
+	backupCmd.PersistentFlags().String("ntfy-url", "", "Ntfy URL to send a notification to after backup")
+	internal.Viper.BindPFlag("ntfy-url", backupCmd.PersistentFlags().Lookup("ntfy-url"))
+	internal.Viper.SetDefault("ntfy-url", "")
 
 }

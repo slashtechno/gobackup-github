@@ -7,7 +7,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}",
-            "args": ["backup"],
+            "args": ["backup", "--run-type", "${input:runType}"],
             "console": "integratedTerminal"
         },
         {
