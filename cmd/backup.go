@@ -29,6 +29,7 @@ var backupCmd = &cobra.Command{
 			},
 			// Pass an empty interval as this is a one-time backup
 			"",
+			0,
 		)
 		if err != nil {
 			log.Error("Backup failed", "err", err)

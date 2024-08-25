@@ -155,6 +155,7 @@ func Backup(config BackupConfig) error {
 func StartBackup(
 	config BackupConfig,
 	interval string,
+	maxBackups int,
 ) error {
 	backupConfig := config
 

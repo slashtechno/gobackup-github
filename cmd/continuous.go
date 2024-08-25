@@ -25,8 +25,8 @@ var continuousCmd = &cobra.Command{
 				Output:      internal.Viper.GetString("output"),
 				RunType:     internal.Viper.GetString("run-type"),
 			},
-			// Pass an empty interval as this is a one-time backup
 			internal.Viper.GetString("interval"),
+			internal.Viper.GetInt("max-backups"),
 		)
 		if err != nil {
 			log.Error("Backup failed", "err", err)
@@ -40,5 +40,9 @@ func init() {
 	continuousCmd.Flags().StringP("interval", "i", "", "Interval to check for new content")
 	internal.Viper.BindPFlag("interval", continuousCmd.Flags().Lookup("interval"))
 	internal.Viper.SetDefault("interval", "24h")
+
+	continuousCmd.Flags().IntP("max-backups", "n", 0, "Number of backups to keep")
+	internal.Viper.BindPFlag("max-backups", continuousCmd.Flags().Lookup("max-backups"))
+	internal.Viper.SetDefault("max-backups", 1)
 
 }

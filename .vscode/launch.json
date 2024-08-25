@@ -16,9 +16,18 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}",
-            // "args": ["backup", "continuous", "--interval", "5s"],
-            "args": ["backup", "continuous"],
+            // "args": ["backup", "continuous", "--run-type", "${input:runType}", "--interval", "5s", "--max-backups", "5"],
+            "args": ["backup", "continuous", "--run-type", "${input:runType}", "--interval", "5s"],
             "console": "integratedTerminal"
         },
     ],
+        "inputs": [
+        {
+            "id": "runType",
+            "type": "pickString",
+            "description": "Select the run type for continuous backup",
+            "options": ["clone", "fetch", "dry-run"],
+            "default": "full"
+        },
+    ]
 }
