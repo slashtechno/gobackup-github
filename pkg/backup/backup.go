@@ -114,19 +114,39 @@ func Backup(config BackupConfig) error {
 	log.Info("Deduplicated repositories", "count", len(noDuplicates))
 	if config.RunType == "clone" {
 		log.Info("Cloning repositories")
+		var wg sync.WaitGroup
+		errChan := make(chan error, len(noDuplicates))
 		bar := progressbar.Default(int64(len(noDuplicates)))
+
 		for _, repo := range noDuplicates {
-			err := cloneRepository(repo, config)
+			wg.Add(1)
+			go func(repo *github.Repository) {
+				defer wg.Done()
+
+				err := cloneRepository(repo, config)
+				if err != nil {
+					errChan <- err
+					return
+				}
+
+				log.Debug("Cloned repository", "repository", repo.GetFullName())
+				bar.Add(1)
+			}(repo)
+		}
+
+		wg.Wait()
+		close(errChan)
+		for err := range errChan {
 			if err != nil {
 				return err
 			}
-			log.Debug("Cloned repository", "repository", repo.GetFullName())
-			bar.Add(1)
 		}
+
 	} else if config.RunType == "fetch" {
 		var output string
 		log.Info("Fetching repositories")
 		if filepath.Ext(config.Output) != ".json" {
+			// TODO: Make sure directories exist
 			output = filepath.Join(config.Output, "repositories.json")
 			log.Info("Output file should be a JSON file. Attempting to use `repositories.json` in the output directory", "path", output)
 		} else {
@@ -183,13 +203,6 @@ func StartBackup(
 			maxBackups = 1
 		}
 
-		// log.Info("Emptying output directory", "output", backupConfig.Output)
-		// cleanedPath := filepath.Clean(backupConfig.Output)
-		// err := utils.EmptyDir(cleanedPath)
-		// if err != nil {
-		// 	return err
-		// }
-
 		duration, err := time.ParseDuration(interval)
 		if err != nil {
 			return err
@@ -214,14 +227,6 @@ func StartBackup(
 			// The backup will not be concurrent if the backup process takes longer than the interval
 			for range ticker.C {
 				wg.Add(1)
-
-				// log.Info("Emptying output directory", "output", backupConfig.Output)
-				// cleanedPath := filepath.Clean(backupConfig.Output)
-				// err := utils.EmptyDir(cleanedPath)
-				// if err != nil {
-				// 	errChan <- err
-				// 	return
-				// }
 
 				backupConfig.Output, err = utils.RollingDir(parentDir, maxBackups)
 				if err != nil {
