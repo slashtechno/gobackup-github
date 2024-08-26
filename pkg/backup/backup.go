@@ -25,8 +25,9 @@ type BackupConfig struct {
 	Token       string
 	Output      string
 	// RunType can be `clone`, `fetch`, or `dry-run`
-	RunType string
-	NtfyUrl string
+	RunType           string
+	NtfyUrl           string
+	RecurseSubmodules uint
 }
 
 func GetUsersInOrg(

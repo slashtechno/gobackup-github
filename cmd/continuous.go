@@ -18,13 +18,14 @@ var continuousCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		err := backup.StartBackup(
 			backup.BackupConfig{
-				Usernames:   internal.Viper.GetStringSlice("usernames"),
-				InOrg:       internal.Viper.GetStringSlice("in-org"),
-				BackupStars: internal.Viper.GetBool("stars"),
-				Token:       internal.Viper.GetString("token"),
-				Output:      internal.Viper.GetString("output"),
-				RunType:     internal.Viper.GetString("run-type"),
-				NtfyUrl:     internal.Viper.GetString("ntfy-url"),
+				Usernames:         internal.Viper.GetStringSlice("usernames"),
+				InOrg:             internal.Viper.GetStringSlice("in-org"),
+				BackupStars:       internal.Viper.GetBool("stars"),
+				Token:             internal.Viper.GetString("token"),
+				Output:            internal.Viper.GetString("output"),
+				RunType:           internal.Viper.GetString("run-type"),
+				NtfyUrl:           internal.Viper.GetString("ntfy-url"),
+				RecurseSubmodules: internal.Viper.GetUint("recurse-submodules"),
 			},
 			internal.Viper.GetString("interval"),
 			internal.Viper.GetInt("max-backups"),

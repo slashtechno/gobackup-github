@@ -18,3 +18,5 @@ usernames: []
 run-type: clone
 # Ntfy URL to optionally send a notification to upon completion. If you don't want to use ntfy.sh, you can use a self-hosted instance of ntfy.
 ntfy-url: ""
+# Submodule depth to include. If set to 0 (default), submodules will not be initialized.
+recurse-submodules: 10

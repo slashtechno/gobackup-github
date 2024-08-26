@@ -28,14 +28,14 @@ func cloneRepository(repo *github.Repository, config BackupConfig) error {
 	outputDirectory := filepath.Join(config.Output, repo.GetFullName())
 	// Clone the repository
 	_, err := git.PlainClone(outputDirectory, false, &git.CloneOptions{
-		// TODO: Add a config option to enable RecurseSubmodules
 		URL: repo.GetCloneURL(),
 		Auth: &http.BasicAuth{
 			// Username: config.Username,
 			Username: config.Token,
 			Password: config.Token,
 		},
-		SingleBranch: false, // False by default
+		SingleBranch:      false, // False by default
+		RecurseSubmodules: git.SubmoduleRescursivity(config.RecurseSubmodules),
 	})
 	if err != nil {
 		return err
