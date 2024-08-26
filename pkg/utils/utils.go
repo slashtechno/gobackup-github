@@ -29,7 +29,7 @@ func SetupLogger(logLevel string) {
 	}
 }
 
-// EmptyDir empties a directory by removing all files and directories in it and recreating the directory
+// EmptyDir empties a directory by removing all files and directories in it and recreating the directory.
 func EmptyDir(pathToDir string) error {
 	// Remove all files in the directory
 	os.RemoveAll(pathToDir)

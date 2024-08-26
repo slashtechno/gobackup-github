@@ -114,6 +114,14 @@ func Backup(config BackupConfig) error {
 	log.Info("Deduplicated repositories", "count", len(noDuplicates))
 	if config.RunType == "clone" {
 		log.Info("Cloning repositories")
+
+		// Unlike os.Mkdir, os.MkdirAll won't return an error if the directory already exists. It also creates any necessary parent directories.
+		// With rolling backups, this shouldn't do anything since the directory ~~will~~ should already exist
+		err := os.MkdirAll(config.Output, 0755)
+		if err != nil {
+			return err
+		}
+
 		var wg sync.WaitGroup
 		errChan := make(chan error, len(noDuplicates))
 		bar := progressbar.Default(int64(len(noDuplicates)))
@@ -144,8 +152,13 @@ func Backup(config BackupConfig) error {
 
 	} else if config.RunType == "fetch" {
 		var output string
+
 		log.Info("Fetching repositories")
 		if filepath.Ext(config.Output) != ".json" {
+			err := os.MkdirAll(config.Output, 0755)
+			if err != nil {
+				return err
+			}
 			// TODO: Make sure directories exist
 			output = filepath.Join(config.Output, "repositories.json")
 			log.Info("Output file should be a JSON file. Attempting to use `repositories.json` in the output directory", "path", output)
