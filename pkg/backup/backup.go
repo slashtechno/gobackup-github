@@ -9,7 +9,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/schollz/progressbar/v3"
+
 	"github.com/charmbracelet/log"
+	"github.com/go-resty/resty/v2"
 	"github.com/gofri/go-github-ratelimit/github_ratelimit"
 	"github.com/google/go-github/v63/github"
 	"github.com/slashtechno/gobackup-github/pkg/utils"
@@ -22,7 +25,9 @@ type BackupConfig struct {
 	Token       string
 	Output      string
 	// RunType can be `clone`, `fetch`, or `dry-run`
-	RunType string
+	RunType           string
+	NtfyUrl           string
+	RecurseSubmodules uint
 }
 
 func GetUsersInOrg(
@@ -95,6 +100,8 @@ func Backup(config BackupConfig) error {
 		repos = append(repos, fetchedRepos.Starred...)
 	}
 	if len(allUsers) == 0 {
+		// Just to be verbose, set the username to ""
+		fetchConfig.Username = ""
 		fetchedRepos, err := GetRepositories(
 			fetchConfig,
 		)
@@ -110,20 +117,54 @@ func Backup(config BackupConfig) error {
 	log.Info("Deduplicated repositories", "count", len(noDuplicates))
 	if config.RunType == "clone" {
 		log.Info("Cloning repositories")
+
+		// Unlike os.Mkdir, os.MkdirAll won't return an error if the directory already exists. It also creates any necessary parent directories.
+		// With rolling backups, this shouldn't do anything since the directory ~~will~~ should already exist
+		err := os.MkdirAll(config.Output, 0755)
+		if err != nil {
+			return err
+		}
+
+		var wg sync.WaitGroup
+		errChan := make(chan error, len(noDuplicates))
+		bar := progressbar.Default(int64(len(noDuplicates)))
+
 		for _, repo := range noDuplicates {
-			err := cloneRepository(repo, config)
+			wg.Add(1)
+			go func(repo *github.Repository) {
+				defer wg.Done()
+
+				err := cloneRepository(repo, config)
+				if err != nil {
+					errChan <- err
+					return
+				}
+
+				log.Debug("Cloned repository", "repository", repo.GetFullName())
+				bar.Add(1)
+			}(repo)
+		}
+
+		wg.Wait()
+		close(errChan)
+		for err := range errChan {
 			if err != nil {
 				return err
 			}
-			log.Info("Cloned repository", "repository", repo.GetFullName())
-
 		}
+
 	} else if config.RunType == "fetch" {
 		var output string
+
 		log.Info("Fetching repositories")
 		if filepath.Ext(config.Output) != ".json" {
+			err := os.MkdirAll(config.Output, 0755)
+			if err != nil {
+				return err
+			}
+			// TODO: Make sure directories exist
 			output = filepath.Join(config.Output, "repositories.json")
-			log.Warn("Output file should be a JSON file. Attempting to use `repositories.json` in the output directory", "path", output)
+			log.Info("Output file should be a JSON file. Attempting to use `repositories.json` in the output directory", "path", output)
 		} else {
 			output = config.Output
 			log.Debug("Using specified output file", "path", output)
@@ -144,10 +185,18 @@ func Backup(config BackupConfig) error {
 		if err != nil {
 			return err
 		}
-		log.Info("Dry run - printing repositories to console")
+		log.Debug("Dry run - printing repositories to console")
 		fmt.Println(string(repoJson))
 	} else {
 		return fmt.Errorf("invalid run type: %s; must be one of `clone`, `fetch`, or `dry-run`", config.RunType)
+	}
+
+	if config.NtfyUrl != "" {
+		log.Info("Sending notification", "url", config.NtfyUrl)
+		_, err := resty.New().R().SetHeader("Tags", "tada").SetBody("Backup complete").Post(config.NtfyUrl)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -155,6 +204,7 @@ func Backup(config BackupConfig) error {
 func StartBackup(
 	config BackupConfig,
 	interval string,
+	maxBackups int,
 ) error {
 	backupConfig := config
 
@@ -162,11 +212,11 @@ func StartBackup(
 	if interval != "" {
 		log.Info("Starting backup with interval", "interval", interval)
 
-		log.Info("Emptying output directory", "output", backupConfig.Output)
-		cleanedPath := filepath.Clean(backupConfig.Output)
-		err := utils.EmptyDir(cleanedPath)
-		if err != nil {
-			return err
+		parentDir := filepath.Clean(backupConfig.Output)
+
+		if maxBackups < 1 {
+			log.Warn("maxBackups must be greater than 0. Setting to 1", "maxBackups", maxBackups)
+			maxBackups = 1
 		}
 
 		duration, err := time.ParseDuration(interval)
@@ -179,6 +229,10 @@ func StartBackup(
 		var wg sync.WaitGroup
 
 		// Run backup on start
+		backupConfig.Output, err = rollingDirIfNotDryRun(backupConfig, maxBackups, parentDir)
+		if err != nil {
+			return err
+		}
 		err = Backup(backupConfig)
 		if err != nil {
 			return err
@@ -189,9 +243,7 @@ func StartBackup(
 			// The backup will not be concurrent if the backup process takes longer than the interval
 			for range ticker.C {
 				wg.Add(1)
-				log.Info("Emptying output directory", "output", backupConfig.Output)
-				cleanedPath := filepath.Clean(backupConfig.Output)
-				err := utils.EmptyDir(cleanedPath)
+				backupConfig.Output, err = rollingDirIfNotDryRun(backupConfig, maxBackups, parentDir)
 				if err != nil {
 					errChan <- err
 					return
@@ -201,6 +253,7 @@ func StartBackup(
 					errChan <- err
 					return
 				}
+
 				wg.Done()
 			}
 
@@ -219,4 +272,14 @@ func StartBackup(
 		return err
 	}
 	return nil
+}
+
+// Only run utils.RollingDir if not in a dry run
+func rollingDirIfNotDryRun(config BackupConfig, maxBackups int, parentDir string) (string, error) {
+	if config.RunType != "dry-run" {
+		return utils.RollingDir(filepath.Clean(parentDir), maxBackups)
+	} else {
+		log.Debug("Dry run - not rolling directories")
+	}
+	return config.Output, nil
 }

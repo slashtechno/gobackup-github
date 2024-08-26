@@ -1,3 +1,4 @@
+Output demo.gif
 Type "gobackup-github backup"
 Sleep 500ms
 Enter
@@ -14,4 +15,4 @@ Enter
 Sleep 500ms
 Type "ls backup/slashtechno"
 Enter
-Sleep 5.5s
+Sleep 3.2s

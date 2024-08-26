@@ -20,15 +20,18 @@ var backupCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		err := backup.StartBackup(
 			backup.BackupConfig{
-				Usernames:   internal.Viper.GetStringSlice("usernames"),
-				InOrg:       internal.Viper.GetStringSlice("in-org"),
-				BackupStars: internal.Viper.GetBool("stars"),
-				Token:       internal.Viper.GetString("token"),
-				Output:      internal.Viper.GetString("output"),
-				RunType:     internal.Viper.GetString("run-type"),
+				Usernames:         internal.Viper.GetStringSlice("usernames"),
+				InOrg:             internal.Viper.GetStringSlice("in-org"),
+				BackupStars:       internal.Viper.GetBool("stars"),
+				Token:             internal.Viper.GetString("token"),
+				Output:            internal.Viper.GetString("output"),
+				RunType:           internal.Viper.GetString("run-type"),
+				NtfyUrl:           internal.Viper.GetString("ntfy-url"),
+				RecurseSubmodules: internal.Viper.GetUint("recurse-submodules"),
 			},
 			// Pass an empty interval as this is a one-time backup
 			"",
+			0,
 		)
 		if err != nil {
 			log.Error("Backup failed", "err", err)
@@ -67,8 +70,16 @@ func init() {
 	internal.Viper.BindPFlag("backup-stars", backupCmd.PersistentFlags().Lookup("stars"))
 	internal.Viper.SetDefault("backup-stars", false)
 
+	backupCmd.PersistentFlags().Uint("recurse-submodules", 0, "Recurse submodules")
+	internal.Viper.BindPFlag("recurse-submodules", backupCmd.PersistentFlags().Lookup("recurse-submodules"))
+	internal.Viper.SetDefault("recurse-submodules", false)
+
 	backupCmd.PersistentFlags().String("run-type", "", "`Type of backup: clone` (clone the repositories), `fetch` (fetch the repositories and write to output if it ends in .json or `repositories.json` in output), `dry-run` (fetch the repositories and print the output). Default is `clone`")
 	internal.Viper.BindPFlag("run-type", backupCmd.PersistentFlags().Lookup("run-type"))
 	internal.Viper.SetDefault("run-type", "clone")
+
+	backupCmd.PersistentFlags().String("ntfy-url", "", "Ntfy URL to send a notification to after backup")
+	internal.Viper.BindPFlag("ntfy-url", backupCmd.PersistentFlags().Lookup("ntfy-url"))
+	internal.Viper.SetDefault("ntfy-url", "")
 
 }
