@@ -100,6 +100,8 @@ func Backup(config BackupConfig) error {
 		repos = append(repos, fetchedRepos.Starred...)
 	}
 	if len(allUsers) == 0 {
+		// Just to be verbose, set the username to ""
+		fetchConfig.Username = ""
 		fetchedRepos, err := GetRepositories(
 			fetchConfig,
 		)
@@ -227,7 +229,7 @@ func StartBackup(
 		var wg sync.WaitGroup
 
 		// Run backup on start
-		backupConfig.Output, err = utils.RollingDir(parentDir, maxBackups)
+		backupConfig.Output, err = rollingDirIfNotDryRun(backupConfig, maxBackups, parentDir)
 		if err != nil {
 			return err
 		}
@@ -241,8 +243,7 @@ func StartBackup(
 			// The backup will not be concurrent if the backup process takes longer than the interval
 			for range ticker.C {
 				wg.Add(1)
-
-				backupConfig.Output, err = utils.RollingDir(parentDir, maxBackups)
+				backupConfig.Output, err = rollingDirIfNotDryRun(backupConfig, maxBackups, parentDir)
 				if err != nil {
 					errChan <- err
 					return
@@ -271,4 +272,14 @@ func StartBackup(
 		return err
 	}
 	return nil
+}
+
+// Only run utils.RollingDir if not in a dry run
+func rollingDirIfNotDryRun(config BackupConfig, maxBackups int, parentDir string) (string, error) {
+	if config.RunType != "dry-run" {
+		return utils.RollingDir(filepath.Clean(parentDir), maxBackups)
+	} else {
+		log.Debug("Dry run - not rolling directories")
+	}
+	return config.Output, nil
 }

@@ -12,7 +12,7 @@ log-level: info
 output: backup
 # GitHub token with read access to the repositories and user
 token: ""
-# List of usernames to fetch. If neither usernames or in-org is set, it will fetch the token owner's repositories
+# List of usernames to fetch. If neither usernames or in-org are set (or an empty string is passed), the authenticated user will (also) be fetched. Fetching the authenticated user also fetches repositories shared with the authenticated user.
 usernames: []
 # `clone` (clone the repositories), `fetch` (fetch the repositories and write to output if it ends in .json or `repositories.json` in output), `dry-run` (fetch the repositories and print the output)
 run-type: clone

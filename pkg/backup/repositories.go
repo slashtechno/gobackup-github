@@ -62,7 +62,6 @@ func GetRepositories(config *FetchConfig) (*Repositories, error) {
 		return nil, err
 	}
 	username := user.GetLogin()
-	log.Info("Fetching repositories for user", "username", username)
 
 	// https://github.com/google/go-github?tab=readme-ov-file#pagination
 	listOptions := github.ListOptions{PerPage: 100}
@@ -71,6 +70,8 @@ func GetRepositories(config *FetchConfig) (*Repositories, error) {
 	// https://pkg.go.dev/github.com/google/go-github/v63@v63.0.0/github#RepositoriesService.ListByUser
 	var userRepos []*github.Repository
 	if config.Username == "" {
+		log.Info("Fetching repositories for the authenticated user; shared repositories will also be fetched.", "username", username)
+
 		opt := &github.RepositoryListByAuthenticatedUserOptions{
 			ListOptions: listOptions,
 		}
@@ -86,6 +87,9 @@ func GetRepositories(config *FetchConfig) (*Repositories, error) {
 			opt.Page = resp.NextPage
 		}
 	} else {
+
+		log.Info("Fetching repositories for user", "username", username)
+
 		opt := &github.RepositoryListByUserOptions{
 			ListOptions: listOptions,
 		}

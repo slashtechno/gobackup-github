@@ -52,6 +52,12 @@ func RollingDir(pathToDir string, maxBackups int) (string, error) {
 	// Get all directories in the path
 	dirs := []string{}
 
+	// Whilst the directory is created when backing up (clone or fetch), that's later. If the directory doesn't exist, os.ReadDir error. Thus, ensure it, and any parent directories, exist.
+	err := os.MkdirAll(pathToDir, 0644)
+	if err != nil {
+		return "", err
+	}
+
 	filesAndDirs, err := os.ReadDir(pathToDir)
 	if err != nil {
 		return "", err
